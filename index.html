@@ -1,0 +1,1631 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SR Cool Chain — Nền tảng kết nối vận chuyển lạnh sầu riêng Đắk Lắk</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.4/chart.umd.min.js"></script>
+<style>
+  :root{
+    --forest:#1F3A2E;
+    --forest-light:#2C4F3D;
+    --gold:#D9A441;
+    --gold-dark:#A87A28;
+    --frost:#5FA9C4;
+    --frost-dark:#2E6B82;
+    --frost-light:#E4F1F5;
+    --cream:#F7F3E8;
+    --card:#FFFFFF;
+    --charcoal:#26261F;
+    --muted:#6B6A5F;
+    --rust:#B4502E;
+    --rust-light:#F7E4DC;
+    --line:#E4DFCF;
+    --radius:14px;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;background:var(--cream);color:var(--charcoal);font-family:'Inter',sans-serif;line-height:1.55;}
+  h1,h2,h3{font-family:'Fraunces',serif;font-weight:600;margin:0;color:var(--forest);}
+  .mono{font-family:'IBM Plex Mono',monospace;}
+  .hidden{display:none !important;}
+
+  /* ---------- Login screen ---------- */
+  #login-screen{
+    min-height:100vh;display:flex;align-items:center;justify-content:center;padding:32px;
+    background:radial-gradient(circle at 20% 15%,#28453400,var(--forest) 0%,var(--forest) 0%),var(--forest);
+    background:var(--forest);
+  }
+  .login-card{
+    background:var(--cream);border-radius:20px;max-width:640px;width:100%;padding:40px 36px;
+    box-shadow:0 20px 60px rgba(0,0,0,0.35);
+  }
+  .login-brand{display:flex;align-items:center;gap:12px;margin-bottom:6px;}
+  .login-brand .brand-mark{width:38px;height:38px;border-radius:10px;background:linear-gradient(135deg,var(--gold),var(--rust));
+    display:flex;align-items:center;justify-content:center;font-family:'Fraunces',serif;font-weight:700;color:var(--forest);font-size:18px;}
+  .login-card h2{font-size:22px;margin-top:18px;}
+  .login-card p.sub{color:var(--muted);font-size:14px;margin-top:6px;margin-bottom:24px;}
+
+  .role-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:22px;}
+  @media (max-width:560px){.role-grid{grid-template-columns:1fr;}}
+  .role-card{
+    border:1.5px solid var(--line);background:#FCFAF4;border-radius:12px;padding:16px 14px;cursor:pointer;
+    text-align:left;transition:border-color .15s,background .15s;
+  }
+  .role-card:hover{border-color:var(--frost);}
+  .role-card.selected{border-color:var(--forest);background:#EDF2EC;}
+  .role-badge{width:32px;height:32px;border-radius:9px;display:flex;align-items:center;justify-content:center;
+    font-family:'IBM Plex Mono',monospace;font-weight:600;font-size:12px;color:#fff;margin-bottom:10px;}
+  .role-card[data-role="farmer"] .role-badge{background:var(--forest);}
+  .role-card[data-role="export"] .role-badge{background:var(--gold-dark);}
+  .role-card[data-role="carrier"] .role-badge{background:var(--frost-dark);}
+  .role-card .r-title{font-weight:600;font-size:14px;color:var(--charcoal);}
+  .role-card .r-desc{font-size:12px;color:var(--muted);margin-top:4px;line-height:1.4;}
+
+  .login-card label{display:block;font-size:13px;font-weight:600;color:var(--forest);margin:0 0 6px;}
+  .login-card input{
+    width:100%;padding:11px 13px;border:1px solid var(--line);border-radius:8px;font-family:'Inter',sans-serif;
+    font-size:14px;background:#FCFAF4;color:var(--charcoal);
+  }
+  .login-card input:focus{outline:2px solid var(--frost);outline-offset:1px;border-color:var(--frost);}
+  .login-error{color:var(--rust);font-size:12.5px;margin-top:8px;display:none;}
+  .login-card .btn{width:100%;margin-top:18px;justify-content:center;}
+
+  /* ---------- App shell ---------- */
+  .topbar{background:var(--forest);color:#F2EFE3;padding:0 28px;position:sticky;top:0;z-index:50;}
+  .topbar-inner{max-width:1180px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;padding:14px 0;}
+  .brand{display:flex;align-items:center;gap:12px;}
+  .brand-mark{width:38px;height:38px;border-radius:10px;background:linear-gradient(135deg,var(--gold),var(--rust));display:flex;align-items:center;justify-content:center;font-family:'Fraunces',serif;font-weight:700;color:var(--forest);font-size:18px;flex-shrink:0;}
+  .brand-text h1{color:#F7F3E8;font-size:19px;letter-spacing:.2px;}
+  .brand-text p{margin:2px 0 0;font-size:12.5px;color:#B9C9BE;}
+
+  .topbar-row2{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;
+    border-top:1px solid rgba(255,255,255,0.1);padding:10px 0;}
+  nav{display:flex;gap:4px;flex-wrap:wrap;}
+  nav button{
+    background:transparent;border:none;color:#D8E2DA;font-family:'Inter',sans-serif;font-weight:500;
+    font-size:14px;padding:9px 14px;border-radius:999px;cursor:pointer;transition:background .15s,color .15s;
+  }
+  nav button:hover{background:rgba(255,255,255,0.08);}
+  nav button.active{background:var(--gold);color:var(--forest);font-weight:600;}
+
+  .user-chip{display:flex;align-items:center;gap:10px;}
+  .user-chip .u-badge{width:30px;height:30px;border-radius:8px;display:flex;align-items:center;justify-content:center;
+    font-family:'IBM Plex Mono',monospace;font-weight:600;font-size:11px;color:#fff;flex-shrink:0;}
+  .user-chip .u-name{font-size:13.5px;font-weight:600;color:#F2EFE3;line-height:1.2;}
+  .user-chip .u-role{font-size:11.5px;color:#B9C9BE;line-height:1.2;}
+  .user-chip button{
+    background:transparent;border:1px solid rgba(255,255,255,0.25);color:#EDE9DC;font-size:12.5px;
+    padding:6px 12px;border-radius:999px;cursor:pointer;font-family:'Inter',sans-serif;
+  }
+  .user-chip button:hover{background:rgba(255,255,255,0.1);}
+
+  main{max-width:1180px;margin:0 auto;padding:32px 28px 80px;}
+  .tab{display:none;animation:fade .25s ease;}
+  .tab.active{display:block;}
+  @keyframes fade{from{opacity:0;transform:translateY(4px);}to{opacity:1;transform:translateY(0);}}
+
+  .page-head{margin-bottom:28px;}
+  .eyebrow{font-family:'IBM Plex Mono',monospace;font-size:11.5px;letter-spacing:1.5px;text-transform:uppercase;color:var(--gold-dark);margin-bottom:8px;display:block;}
+  .page-head h2{font-size:28px;}
+  .page-head p{color:var(--muted);max-width:640px;margin-top:8px;font-size:15px;}
+
+  .grid{display:grid;gap:24px;}
+  .grid-2{grid-template-columns:1.1fr 1.4fr;}
+  @media (max-width:860px){.grid-2{grid-template-columns:1fr;}}
+
+  .card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:24px;}
+  .card h3{font-size:16px;margin-bottom:16px;}
+
+  label{display:block;font-size:13px;font-weight:600;color:var(--forest);margin:14px 0 6px;}
+  label:first-of-type{margin-top:0;}
+  input,select,textarea{
+    width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:8px;font-family:'Inter',sans-serif;
+    font-size:14px;background:#FCFAF4;color:var(--charcoal);
+  }
+  input:focus,select:focus,textarea:focus{outline:2px solid var(--frost);outline-offset:1px;border-color:var(--frost);}
+  input:disabled{background:#EFEBDE;color:var(--muted);}
+  .row2{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+  .row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;}
+  @media (max-width:640px){.row3{grid-template-columns:1fr;}}
+  .btn{
+    display:inline-flex;align-items:center;gap:6px;
+    margin-top:20px;background:var(--forest);color:#F7F3E8;border:none;padding:12px 20px;border-radius:8px;
+    font-family:'Inter',sans-serif;font-weight:600;font-size:14px;cursor:pointer;transition:background .15s;
+  }
+  .btn:hover{background:var(--forest-light);}
+  .btn-sm{padding:8px 14px;font-size:12.5px;margin-top:0;}
+  .btn-frost{background:var(--frost-dark);}
+  .btn-frost:hover{background:#255769;}
+  .error-text{color:var(--rust);font-size:12.5px;margin-top:6px;display:none;}
+  .toast{
+    margin-top:16px;background:var(--frost-light);border:1px solid var(--frost);color:#1E4A5C;padding:10px 14px;
+    border-radius:8px;font-size:13.5px;display:none;
+  }
+  .perm-note{
+    background:#FDF7E9;border:1px solid #EFDCA0;color:var(--gold-dark);font-size:12.5px;padding:10px 14px;
+    border-radius:8px;margin-bottom:18px;
+  }
+
+  .carrier-card{
+    border:1px solid var(--line);border-radius:10px;padding:14px 16px;margin-bottom:10px;
+    display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;background:#FCFAF4;
+  }
+  .carrier-card .c-name{font-weight:600;color:var(--forest);font-size:14px;}
+  .carrier-card .c-meta{font-size:12.5px;color:var(--muted);margin-top:3px;}
+  .carrier-card .c-right{text-align:right;}
+  .carrier-card .c-price{font-family:'IBM Plex Mono',monospace;font-weight:600;color:var(--rust);font-size:15px;}
+  .carrier-card .c-badge{display:inline-block;margin-top:5px;font-size:11px;padding:3px 9px;border-radius:999px;
+    background:var(--frost-light);color:#1E4A5C;font-weight:600;white-space:nowrap;}
+  .carrier-card .c-badge.warn{background:var(--rust-light);color:var(--rust);}
+  .c-price-list{margin-top:8px;display:flex;gap:6px;flex-wrap:wrap;}
+  .c-price-chip{font-size:11px;font-family:'IBM Plex Mono',monospace;color:var(--muted);background:#F0EDE0;
+    border:1px solid var(--line);border-radius:6px;padding:3px 8px;}
+  .c-price-chip.selected{color:#fff;background:var(--forest);border-color:var(--forest);font-weight:600;}
+
+  /* ---------- Carrier directory + chat ---------- */
+  .carrier-dir-card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:22px;margin-bottom:18px;}
+  .carrier-dir-head{display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:12px;}
+  .carrier-dir-head .cd-name{font-size:17px;font-weight:600;color:var(--forest);}
+  .carrier-dir-head .cd-phone{margin-top:4px;font-size:13px;}
+  .carrier-dir-head .cd-phone a{color:var(--frost-dark);font-weight:600;text-decoration:none;}
+  .cd-fleet{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px;}
+  .cd-fleet-chip{font-size:12px;font-family:'IBM Plex Mono',monospace;background:#EDF2EC;border:1px solid #D7E3D5;
+    color:var(--forest);border-radius:7px;padding:5px 10px;}
+  .cd-meta-row{display:flex;flex-wrap:wrap;gap:18px;margin-top:14px;font-size:12.5px;color:var(--muted);}
+  .cd-meta-row strong{color:var(--charcoal);}
+  .cd-depot-link{color:var(--frost-dark);text-decoration:none;}
+  .cd-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:16px;}
+
+  .chat-panel{margin-top:18px;border-top:1px dashed var(--line);padding-top:16px;display:none;}
+  .chat-panel.open{display:block;}
+  .chat-deal-badge{display:inline-block;background:#E9F0E7;color:var(--forest);font-size:12px;font-weight:700;
+    padding:4px 10px;border-radius:999px;margin-bottom:10px;}
+  .chat-window{max-height:220px;overflow-y:auto;background:#FCFAF4;border:1px solid var(--line);border-radius:10px;
+    padding:12px;display:flex;flex-direction:column;gap:8px;}
+  .chat-msg{max-width:75%;padding:8px 12px;border-radius:10px;font-size:13px;line-height:1.4;}
+  .chat-msg.me{align-self:flex-end;background:var(--forest);color:#F7F3E8;border-bottom-right-radius:2px;}
+  .chat-msg.carrier{align-self:flex-start;background:#E9F0E7;color:var(--charcoal);border-bottom-left-radius:2px;}
+  .chat-msg.system{align-self:center;background:#FDF7E9;color:var(--gold-dark);font-weight:600;font-size:12px;border-radius:8px;}
+  .chat-msg .m-time{display:block;font-size:10px;opacity:.7;margin-top:3px;}
+  .chat-input-row{display:flex;gap:8px;margin-top:12px;}
+  .chat-input-row input{flex:1;}
+  .chat-input-row button{margin-top:0;white-space:nowrap;}
+
+  .driver-row-actions{background:transparent;border:none;color:var(--rust);cursor:pointer;font-size:12.5px;font-weight:600;}
+
+  table{width:100%;border-collapse:collapse;font-size:13.5px;}
+  th{text-align:left;font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.6px;text-transform:uppercase;
+     color:var(--muted);padding:8px 10px;border-bottom:1.5px solid var(--forest);}
+  td{padding:10px 10px;border-bottom:1px solid var(--line);}
+  tr:last-child td{border-bottom:none;}
+  .pill{display:inline-block;padding:3px 10px;border-radius:999px;font-size:11.5px;font-weight:600;}
+  .pill-registered{background:var(--frost-light);color:#1E4A5C;}
+  .pill-port{background:#E9F0E7;color:var(--forest);}
+  .pill-warn{background:var(--rust-light);color:var(--rust);}
+
+  .timeline{margin-top:8px;}
+  .timeline-track{display:flex;border-radius:10px;overflow:hidden;height:46px;border:1px solid var(--line);}
+  .timeline-track div{flex:1;display:flex;align-items:center;justify-content:center;font-family:'IBM Plex Mono',monospace;
+    font-size:11px;color:#fff;position:relative;}
+  .timeline-legend{display:flex;justify-content:space-between;margin-top:6px;font-size:11px;color:var(--muted);}
+  .peak-badge{
+    position:absolute;top:-30px;left:50%;transform:translateX(-50%);background:var(--forest);color:#F7F3E8;
+    font-size:10.5px;padding:3px 8px;border-radius:6px;white-space:nowrap;
+  }
+  .peak-badge:after{content:"";position:absolute;bottom:-4px;left:50%;transform:translateX(-50%);
+    border:4px solid transparent;border-top-color:var(--forest);}
+
+  .stat-row{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-top:20px;}
+  @media (max-width:700px){.stat-row{grid-template-columns:1fr;}}
+  .stat{background:#FCFAF4;border:1px solid var(--line);border-radius:10px;padding:16px;}
+  .stat .num{font-family:'Fraunces',serif;font-size:26px;color:var(--forest);}
+  .stat .lbl{font-size:12.5px;color:var(--muted);margin-top:2px;}
+
+  .chart-wrap{position:relative;height:280px;}
+
+  .ship-card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:20px 22px;margin-bottom:16px;}
+  .ship-head{display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:8px;margin-bottom:16px;}
+  .ship-id{font-family:'IBM Plex Mono',monospace;font-size:13px;color:var(--muted);}
+  .ship-title{font-size:16px;font-weight:600;color:var(--forest);margin-top:2px;}
+  .ship-head-right{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+  .stepper{display:flex;align-items:center;margin:18px 0 6px;}
+  .step{flex:1;text-align:center;position:relative;}
+  .step .dot{width:16px;height:16px;border-radius:50%;background:var(--line);border:2px solid var(--line);margin:0 auto 8px;position:relative;z-index:2;}
+  .step.done .dot{background:var(--forest);border-color:var(--forest);}
+  .step.current .dot{background:var(--gold);border-color:var(--gold-dark);width:20px;height:20px;box-shadow:0 0 0 4px #F5E6C4;}
+  .step .line{position:absolute;top:8px;left:-50%;width:100%;height:2px;background:var(--line);z-index:1;}
+  .step:first-child .line{display:none;}
+  .step.done .line,.step.current .line{background:var(--forest);}
+  .step .label{font-size:11px;color:var(--muted);max-width:90px;margin:0 auto;}
+  .step.done .label,.step.current .label{color:var(--forest);font-weight:600;}
+  .ship-meta{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-top:16px;font-size:13px;}
+  @media (max-width:760px){.ship-meta{grid-template-columns:repeat(2,1fr);}}
+  .ship-meta .k{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;font-family:'IBM Plex Mono',monospace;}
+  .ship-meta .v{margin-top:2px;font-weight:600;color:var(--charcoal);}
+  .temp-ok{color:#1F6B45;}
+  .temp-warn{color:var(--rust);}
+
+  .filters{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:18px;align-items:center;}
+  .filters select{width:auto;min-width:180px;}
+  .source-note{margin-top:16px;font-size:12.5px;color:var(--muted);border-top:1px dashed var(--line);padding-top:14px;}
+  .spike{color:var(--rust);font-weight:700;}
+  .price-input{width:130px;padding:6px 8px;font-size:13px;}
+
+  /* ---------- Booking calendar (kết hợp từ mô hình DurianLink) ---------- */
+  .cal-card{margin-bottom:24px;}
+  .cal-head{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;}
+  .cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;margin-top:14px;}
+  .cal-dow{text-align:center;font-size:10.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;padding-bottom:4px;}
+  .cal-day{aspect-ratio:1;border-radius:8px;border:1px solid var(--line);display:flex;flex-direction:column;
+    align-items:center;justify-content:center;font-size:12.5px;cursor:pointer;background:#FCFAF4;transition:border-color .15s;}
+  .cal-day:hover{border-color:var(--frost);}
+  .cal-day.selected{border-color:var(--forest);border-width:2px;}
+  .cal-day.free{background:#EAF4EC;}
+  .cal-day.medium{background:#FDF2D8;}
+  .cal-day.busy{background:var(--rust-light);}
+  .cal-day .cnt{font-size:9px;color:var(--muted);margin-top:2px;}
+  .cal-day.empty{visibility:hidden;}
+  .cal-legend{display:flex;gap:14px;margin-top:12px;font-size:11px;color:var(--muted);flex-wrap:wrap;}
+  .cal-legend span{display:flex;align-items:center;gap:5px;}
+  .cal-legend i{width:9px;height:9px;border-radius:3px;display:inline-block;}
+
+  /* ---------- Temperature chart & alert per shipment ---------- */
+  .temp-chart-wrap{height:130px;margin-top:14px;}
+  .alert-box{display:flex;gap:10px;align-items:flex-start;background:var(--rust-light);border:1px solid #E7BBA6;
+    border-radius:10px;padding:12px 14px;margin-top:14px;}
+  .alert-box .ico{font-size:16px;}
+  .alert-box b{font-size:12.5px;color:var(--rust);}
+  .alert-box p{font-size:12px;color:var(--muted);margin-top:2px;line-height:1.4;}
+
+  /* ---------- Carrier ratings tab ---------- */
+  .rate-card{display:flex;gap:16px;align-items:flex-start;padding:18px;border:1px solid var(--line);
+    border-radius:var(--radius);margin-bottom:12px;background:var(--card);}
+  .rate-score{font-family:'Fraunces',serif;font-size:28px;font-weight:700;color:var(--gold-dark);min-width:54px;text-align:center;}
+  .rate-body{flex:1;}
+  .rate-tags{display:flex;gap:6px;margin-top:8px;flex-wrap:wrap;}
+  .rtag{font-size:11px;padding:4px 9px;border-radius:999px;background:#E9F0E7;color:var(--forest);font-weight:600;}
+  .rtag.bad{background:var(--rust-light);color:var(--rust);}
+  .review-txt{font-size:12.5px;color:var(--muted);margin-top:8px;line-height:1.5;font-style:italic;}
+
+  footer{max-width:1180px;margin:0 auto;padding:0 28px 40px;color:var(--muted);font-size:12.5px;}
+</style>
+</head>
+<body>
+
+<!-- ================= LOGIN SCREEN ================= -->
+<div id="login-screen">
+  <div class="login-card">
+    <div class="login-brand">
+      <div class="brand-mark">SR</div>
+      <div>
+        <div style="font-family:'Fraunces',serif;font-weight:600;font-size:16px;color:var(--forest);">SR Cool Chain</div>
+        <div style="font-size:12px;color:var(--muted);">Nền tảng kết nối vận chuyển lạnh sầu riêng Đắk Lắk</div>
+      </div>
+    </div>
+    <h2>Chọn vai trò để vào hệ thống</h2>
+    <p class="sub">Bản demo minh họa cách nền tảng phục vụ ba nhóm người dùng khác nhau — mỗi vai trò thấy các chức năng phù hợp với nhu cầu của mình.</p>
+
+    <div class="role-grid" id="role-grid">
+      <button type="button" class="role-card" data-role="farmer">
+        <div class="role-badge">ND</div>
+        <div class="r-title">Nông dân / HTX</div>
+        <div class="r-desc">Đăng ký sản lượng, đặt chỗ container trước mùa vụ</div>
+      </button>
+      <button type="button" class="role-card" data-role="export">
+        <div class="role-badge">DN</div>
+        <div class="r-title">Doanh nghiệp xuất khẩu</div>
+        <div class="r-desc">Đặt chỗ, theo dõi đơn hàng, xem giá cước</div>
+      </button>
+      <button type="button" class="role-card" data-role="carrier">
+        <div class="role-badge">VT</div>
+        <div class="r-title">Đơn vị vận tải / kho lạnh</div>
+        <div class="r-desc">Xem dự báo nhu cầu, cập nhật vận chuyển &amp; giá cước</div>
+      </button>
+    </div>
+
+    <label for="login-name">Tên đơn vị / cá nhân</label>
+    <input id="login-name" type="text" placeholder="VD: HTX Nông sản Krông Pắc">
+    <div class="login-error" id="login-error">Vui lòng chọn vai trò và nhập tên đơn vị.</div>
+    <button class="btn" id="login-submit">Vào hệ thống</button>
+  </div>
+</div>
+
+<!-- ================= APP SHELL ================= -->
+<div id="app" class="hidden">
+<header class="topbar">
+  <div class="topbar-inner">
+    <div class="brand">
+      <div class="brand-mark">SR</div>
+      <div class="brand-text">
+        <h1>SR Cool Chain</h1>
+        <p>Kết nối vận chuyển lạnh sầu riêng Đắk Lắk</p>
+      </div>
+    </div>
+    <div class="user-chip">
+      <div class="u-badge" id="u-badge"></div>
+      <div>
+        <div class="u-name" id="u-name"></div>
+        <div class="u-role" id="u-role"></div>
+      </div>
+      <button id="logout-btn">Đổi vai trò</button>
+    </div>
+  </div>
+  <div class="topbar-inner topbar-row2">
+    <nav>
+      <button class="tab-btn" data-tab="booking">Đặt chỗ trước</button>
+      <button class="tab-btn" data-tab="forecast">Dự báo nhu cầu</button>
+      <button class="tab-btn" data-tab="tracking">Theo dõi đơn hàng</button>
+      <button class="tab-btn" data-tab="pricing">Bảng giá cước</button>
+      <button class="tab-btn" data-tab="carriers">Đơn vị vận tải</button>
+      <button class="tab-btn" data-tab="ratings">Đánh giá vận tải</button>
+    </nav>
+  </div>
+</header>
+
+<main>
+
+  <!-- TAB 1: BOOKING -->
+  <section class="tab" id="tab-booking">
+    <div class="page-head">
+      <span class="eyebrow">Module 01 — Đặt chỗ trước theo mùa vụ</span>
+      <h2>Đăng ký nhu cầu container trước 1–2 tháng vận chuyển</h2>
+      <p>Doanh nghiệp và hợp tác xã đăng ký sớm sản lượng dự kiến để giữ chỗ container lạnh, tránh tình trạng tranh giành vào cao điểm tháng 8–10.</p>
+    </div>
+
+    <div class="card cal-card">
+      <div class="cal-head">
+        <h3 id="cal-title">Lịch giữ chỗ container — Tháng 8, 2026</h3>
+        <div style="display:flex;gap:6px;">
+          <button type="button" class="btn btn-sm" id="cal-prev" style="margin-top:0;">‹ Tháng trước</button>
+          <button type="button" class="btn btn-sm" id="cal-next" style="margin-top:0;">Tháng sau ›</button>
+        </div>
+      </div>
+      <p style="font-size:12.5px;color:var(--muted);margin:6px 0 0;">Mật độ container đã đăng ký theo ngày (dựa trên danh sách đã đăng ký bên dưới) — bấm một ngày để tự động điền vào form.</p>
+      <div class="cal-grid" id="cal-grid"></div>
+      <div class="cal-legend">
+        <span><i style="background:#8FCB9E"></i> Còn nhiều chỗ</span>
+        <span><i style="background:#F0C86B"></i> Sắp đầy</span>
+        <span><i style="background:#E19273"></i> Gần kín chỗ</span>
+      </div>
+    </div>
+
+    <div class="grid grid-2">
+      <div class="card">
+        <h3>Form đăng ký</h3>
+        <form id="booking-form">
+          <label for="f-org">Tên đơn vị (doanh nghiệp / HTX)</label>
+          <input id="f-org" type="text" placeholder="VD: HTX Nông sản Krông Pắc">
+
+          <div class="row2">
+            <div>
+              <label for="f-contact">Họ tên người đăng ký</label>
+              <input id="f-contact" type="text" placeholder="VD: Nguyễn Văn A">
+            </div>
+            <div>
+              <label for="f-phone">Số điện thoại</label>
+              <input id="f-phone" type="tel" placeholder="VD: 0905 123 456">
+            </div>
+          </div>
+
+          <label for="f-region">Vùng trồng</label>
+          <select id="f-region">
+            <option value="">— Chọn vùng —</option>
+            <option>Krông Pắc</option>
+            <option>Ea Kar</option>
+            <option>Cư M'gar</option>
+            <option>Krông Búk</option>
+            <option>Krông Năng</option>
+          </select>
+
+          <div class="row3">
+            <div>
+              <label for="f-volume">Sản lượng dự kiến (tấn)</label>
+              <input id="f-volume" type="number" min="1" placeholder="VD: 120">
+            </div>
+            <div>
+              <label for="f-month">Tháng vận chuyển dự kiến</label>
+              <select id="f-month">
+                <option value="">— Chọn tháng —</option>
+                <option value="7">Tháng 7</option>
+                <option value="8">Tháng 8</option>
+                <option value="9">Tháng 9</option>
+                <option value="10">Tháng 10</option>
+                <option value="11">Tháng 11</option>
+              </select>
+            </div>
+            <div>
+              <label for="f-date">Ngày vận chuyển cụ thể</label>
+              <input id="f-date" type="date">
+              <div id="f-date-info" class="mono" style="font-size:11.5px;color:var(--muted);margin-top:6px;min-height:14px;"></div>
+            </div>
+          </div>
+
+          <label for="f-route">Tuyến vận chuyển</label>
+          <select id="f-route">
+            <option>Đắk Lắk – Cảng Cát Lái</option>
+            <option>Đắk Lắk – Cảng Cái Mép</option>
+          </select>
+
+          <label for="f-container">Loại container</label>
+          <select id="f-container">
+            <option value="">— Chọn loại container —</option>
+            <option value="20">Container 20ft lạnh</option>
+            <option value="40">Container 40ft lạnh</option>
+            <option value="45">Container 45ft lạnh</option>
+          </select>
+
+          <div class="error-text" id="f-error">Vui lòng điền đầy đủ tên đơn vị, họ tên, số điện thoại hợp lệ, vùng trồng, sản lượng, tháng vận chuyển, ngày vận chuyển cụ thể và loại container.</div>
+          <button type="submit" class="btn">Đăng ký đặt chỗ</button>
+          <div class="toast" id="f-toast"></div>
+          <div id="carrier-match" class="hidden" style="margin-top:20px;">
+            <h3 style="font-size:15px;margin-bottom:4px;">Đơn vị vận tải phù hợp</h3>
+            <p style="font-size:12.5px;color:var(--muted);margin:0 0 14px;">Xếp hạng theo giá cước và khả năng chạy đúng ngày trong tuần bạn chọn.</p>
+            <div id="carrier-match-list"></div>
+          </div>
+        </form>
+      </div>
+
+      <div class="card">
+        <h3>Danh sách đã đăng ký <span class="mono" id="booking-count" style="color:var(--muted);font-weight:400;font-size:13px;"></span></h3>
+        <div style="overflow-x:auto;">
+          <table>
+            <thead>
+              <tr><th>Đơn vị</th><th>Người liên hệ</th><th>Vùng trồng</th><th>Sản lượng</th><th>Vận chuyển</th><th>Loại cont</th><th>Container ước tính</th><th>Trạng thái</th></tr>
+            </thead>
+            <tbody id="booking-table-body"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- TAB 2: FORECAST -->
+  <section class="tab" id="tab-forecast">
+    <div class="page-head">
+      <span class="eyebrow">Module 02 — Dự báo nhu cầu</span>
+      <h2>Ước tính số container cần theo mùa vụ</h2>
+      <p>Tổng hợp từ sản lượng đăng ký để hãng tàu và đơn vị vận tải chủ động điều phối container lạnh trước cao điểm.</p>
+    </div>
+
+    <div class="card" style="margin-bottom:24px;">
+      <h3>Lịch mùa vụ sầu riêng Đắk Lắk</h3>
+      <div class="timeline">
+        <div class="timeline-track" id="season-track"></div>
+        <div class="timeline-legend">
+          <span>Tháng 1</span><span>Tháng 12</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="grid grid-2">
+      <div class="card">
+        <h3>Tổng nhu cầu theo tháng</h3>
+        <div class="chart-wrap"><canvas id="forecast-chart"></canvas></div>
+        <div class="stat-row">
+          <div class="stat"><div class="num mono" id="stat-total-vol">–</div><div class="lbl">Tổng sản lượng đăng ký (tấn)</div></div>
+          <div class="stat"><div class="num mono" id="stat-total-cont">–</div><div class="lbl">Container 20ft lạnh cần</div></div>
+          <div class="stat"><div class="num mono" id="stat-peak-month">–</div><div class="lbl">Tháng cao điểm</div></div>
+        </div>
+      </div>
+      <div class="card">
+        <h3>Khuyến nghị điều phối</h3>
+        <div id="recommendation" style="font-size:14px;color:var(--charcoal);"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- TAB 3: TRACKING -->
+  <section class="tab" id="tab-tracking">
+    <div class="page-head">
+      <span class="eyebrow">Module 03 — Theo dõi đơn hàng thời gian thực</span>
+      <h2>Vị trí và trạng thái từng lô hàng</h2>
+      <p>Giảm tình trạng ùn ứ không rõ vị trí — đặc biệt quan trọng với sầu riêng, mặt hàng dễ hư hỏng nếu chậm trễ khâu vận chuyển lạnh.</p>
+    </div>
+    <div class="perm-note" id="tracking-note"></div>
+    <div id="ship-list"></div>
+  </section>
+
+  <!-- TAB 4: PRICING -->
+  <section class="tab" id="tab-pricing">
+    <div class="page-head">
+      <span class="eyebrow">Module 04 — Bảng giá cước minh bạch</span>
+      <h2>Giá cước container lạnh theo mùa</h2>
+      <p>Công khai xu hướng giá theo tuyến và thời điểm để hạn chế tình trạng bị ép giá khi container khan hiếm vào cao điểm.</p>
+    </div>
+
+    <div class="perm-note hidden" id="pricing-note">Giá cước do đơn vị vận tải công bố. Vai trò của bạn chỉ có quyền xem.</div>
+
+    <div class="card">
+      <div class="filters">
+        <select id="price-route">
+          <option value="catlai">Đắk Lắk – Cảng Cát Lái</option>
+          <option value="caimep">Đắk Lắk – Cảng Cái Mép</option>
+        </select>
+        <select id="price-size">
+          <option value="20">Container 20ft lạnh</option>
+          <option value="40">Container 40ft lạnh</option>
+        </select>
+      </div>
+      <div class="chart-wrap"><canvas id="price-chart"></canvas></div>
+
+      <div style="overflow-x:auto;margin-top:20px;">
+        <table>
+          <thead><tr><th>Tháng</th><th>Giá tham khảo</th><th>Biến động</th><th id="price-edit-head" class="hidden">Cập nhật</th></tr></thead>
+          <tbody id="price-table-body"></tbody>
+        </table>
+      </div>
+      <button class="btn btn-frost hidden" id="price-publish-btn">Công bố giá mới</button>
+      <div class="toast" id="price-toast"></div>
+
+      <div class="source-note">
+        Dữ liệu tổng hợp tham khảo từ báo giá công khai của các đơn vị vận tải/forwarder trong nước, mang tính minh họa cho mục đích demo — không phản ánh giá hợp đồng thực tế tại từng thời điểm.<br>
+        Cập nhật gần nhất: <strong id="price-updated"></strong>
+      </div>
+    </div>
+  </section>
+
+  <!-- TAB 5: CARRIERS -->
+  <section class="tab" id="tab-carriers">
+    <div class="page-head">
+      <span class="eyebrow">Module 05 — Kết nối đơn vị vận tải</span>
+      <h2 id="carriers-title">Đơn vị vận tải &amp; kho lạnh</h2>
+      <p id="carriers-desc">Xem năng lực đội xe lạnh, liên hệ trực tiếp, chat tư vấn giá và chốt hợp đồng ngay trên nền tảng.</p>
+    </div>
+
+    <!-- Dành cho Nông dân/HTX & Doanh nghiệp xuất khẩu: danh bạ đơn vị vận tải -->
+    <div id="carrier-directory"></div>
+
+    <!-- Dành cho Đơn vị vận tải: bảng quản lý hồ sơ của chính họ -->
+    <div id="carrier-self-manage" class="hidden">
+      <div class="perm-note" id="carrier-self-note"></div>
+      <div class="grid grid-2">
+        <div class="card">
+          <h3>Đội xe lạnh hiện có</h3>
+          <div class="row3" id="fleet-inputs"></div>
+          <button class="btn btn-frost btn-sm" id="fleet-save-btn" style="margin-top:16px;">Cập nhật số lượng cont lạnh</button>
+          <div class="toast" id="fleet-toast"></div>
+        </div>
+        <div class="card">
+          <h3>Vị trí GPS bến / kho lạnh</h3>
+          <label for="depot-name">Tên bến / kho</label>
+          <input id="depot-name" type="text" placeholder="VD: Kho lạnh Krông Pắc">
+          <div class="row2">
+            <div>
+              <label for="depot-lat">Vĩ độ (lat)</label>
+              <input id="depot-lat" type="number" step="0.0001">
+            </div>
+            <div>
+              <label for="depot-lng">Kinh độ (lng)</label>
+              <input id="depot-lng" type="number" step="0.0001">
+            </div>
+          </div>
+          <button class="btn btn-sm" id="depot-geoloc-btn" style="margin-top:14px;">📍 Lấy vị trí hiện tại</button>
+          <button class="btn btn-frost btn-sm" id="depot-save-btn" style="margin-top:14px;">Cập nhật vị trí GPS</button>
+          <div class="toast" id="depot-toast"></div>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top:24px;">
+        <h3>Danh sách tài xế</h3>
+        <div style="overflow-x:auto;">
+          <table>
+            <thead><tr><th>Tên tài xế</th><th>Số điện thoại</th><th>Biển số xe</th><th></th></tr></thead>
+            <tbody id="driver-table-body"></tbody>
+          </table>
+        </div>
+        <div class="row3" style="margin-top:16px;">
+          <div>
+            <label for="driver-name">Tên tài xế</label>
+            <input id="driver-name" type="text" placeholder="VD: Nguyễn Văn Bình">
+          </div>
+          <div>
+            <label for="driver-phone">Số điện thoại</label>
+            <input id="driver-phone" type="tel" placeholder="VD: 0905 111 222">
+          </div>
+          <div>
+            <label for="driver-plate">Biển số xe</label>
+            <input id="driver-plate" type="text" placeholder="VD: 47C-123.45">
+          </div>
+        </div>
+        <button class="btn btn-sm" id="driver-add-btn" style="margin-top:14px;">+ Thêm tài xế</button>
+        <div class="toast" id="driver-toast"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- TAB 6: RATINGS -->
+  <section class="tab" id="tab-ratings">
+    <div class="page-head">
+      <span class="eyebrow">Module 06 — Đánh giá đơn vị vận tải</span>
+      <h2>Xếp hạng dựa trên dữ liệu thực tế</h2>
+      <p>Đúng hẹn, giữ nhiệt ổn định, xử lý sự cố — không chỉ đánh giá cảm tính, giúp chọn đúng đối tác cho mùa vụ sau.</p>
+    </div>
+    <div id="ratings-list"></div>
+  </section>
+
+</main>
+
+<footer>
+  SR Cool Chain — bản demo minh họa cho đề tài nâng cao năng lực vận chuyển sầu riêng xuất khẩu tại Đắk Lắk. Dữ liệu trong bản demo là dữ liệu mô phỏng.
+</footer>
+</div>
+
+<script>
+/* ================= ROLE CONFIG ================= */
+const ROLES = {
+  farmer:  {label:"Nông dân / HTX", badge:"ND", color:"#1F3A2E", tabs:["booking","forecast","carriers","ratings"]},
+  export:  {label:"Doanh nghiệp xuất khẩu", badge:"DN", color:"#A87A28", tabs:["booking","forecast","tracking","pricing","carriers","ratings"]},
+  carrier: {label:"Đơn vị vận tải / kho lạnh", badge:"VT", color:"#2E6B82", tabs:["forecast","tracking","pricing","carriers","ratings"]},
+};
+
+let currentUser = null; // {role, name}
+
+/* ================= LOGIN SCREEN LOGIC ================= */
+let selectedRole = null;
+document.querySelectorAll('.role-card').forEach(card=>{
+  card.addEventListener('click',()=>{
+    document.querySelectorAll('.role-card').forEach(c=>c.classList.remove('selected'));
+    card.classList.add('selected');
+    selectedRole = card.dataset.role;
+  });
+});
+
+document.getElementById('login-submit').addEventListener('click', ()=>{
+  const name = document.getElementById('login-name').value.trim();
+  const err = document.getElementById('login-error');
+  if(!selectedRole || !name){
+    err.style.display='block';
+    return;
+  }
+  err.style.display='none';
+  currentUser = {role:selectedRole, name};
+  enterApp();
+});
+
+document.getElementById('logout-btn').addEventListener('click', ()=>{
+  currentUser = null;
+  selectedRole = null;
+  document.querySelectorAll('.role-card').forEach(c=>c.classList.remove('selected'));
+  document.getElementById('login-name').value='';
+  document.getElementById('app').classList.add('hidden');
+  document.getElementById('login-screen').classList.remove('hidden');
+});
+
+function enterApp(){
+  document.getElementById('login-screen').classList.add('hidden');
+  document.getElementById('app').classList.remove('hidden');
+
+  const roleInfo = ROLES[currentUser.role];
+  document.getElementById('u-badge').textContent = roleInfo.badge;
+  document.getElementById('u-badge').style.background = roleInfo.color;
+  document.getElementById('u-name').textContent = currentUser.name;
+  document.getElementById('u-role').textContent = roleInfo.label;
+
+  // Filter nav tabs by role
+  const navButtons = document.querySelectorAll('.tab-btn');
+  let firstVisible = null;
+  navButtons.forEach(btn=>{
+    const tabId = btn.dataset.tab;
+    if(roleInfo.tabs.includes(tabId)){
+      btn.classList.remove('hidden');
+      if(!firstVisible) firstVisible = tabId;
+    } else {
+      btn.classList.add('hidden');
+    }
+  });
+  navButtons.forEach(b=>b.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.querySelector('.tab-btn[data-tab="'+firstVisible+'"]').classList.add('active');
+  document.getElementById('tab-'+firstVisible).classList.add('active');
+
+  // Pre-fill + lock org name on booking form for farmer/export
+  const orgField = document.getElementById('f-org');
+  if(currentUser.role==='farmer' || currentUser.role==='export'){
+    orgField.value = currentUser.name;
+    orgField.disabled = true;
+  } else {
+    orgField.value = '';
+    orgField.disabled = false;
+  }
+
+  try{ renderBookingTable(); }catch(err){ console.error('renderBookingTable lỗi:', err); }
+  try{ renderCalendar(); }catch(err){ console.error('renderCalendar lỗi:', err); }
+  try{ renderForecast(); }catch(err){ console.error('renderForecast lỗi:', err); }
+  try{ renderShipments(); }catch(err){ console.error('renderShipments lỗi:', err); }
+  try{ renderPricing(); }catch(err){ console.error('renderPricing lỗi:', err); }
+  try{ renderCarriersTab(); }catch(err){ console.error('renderCarriersTab lỗi:', err); }
+  try{ renderRatings(); }catch(err){ console.error('renderRatings lỗi:', err); }
+}
+
+document.querySelectorAll('.tab-btn').forEach(btn=>{
+  btn.addEventListener('click',()=>{
+    if(btn.classList.contains('hidden')) return;
+    document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+    document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('tab-'+btn.dataset.tab).classList.add('active');
+  });
+});
+
+/* ================= SHARED STATE ================= */
+const TONS_PER_CONTAINER = 9;
+
+let bookings = [
+  {org:"HTX Nông sản Krông Pắc", contact:"Nguyễn Văn Hòa", phone:"0905 112 233", region:"Krông Pắc", volume:140, month:8, date:"2026-08-11", containerType:"40", route:"Đắk Lắk – Cảng Cát Lái"},
+  {org:"Cty XNK Tây Nguyên Xanh", contact:"Trần Thị Mai", phone:"0913 445 667", region:"Cư M'gar", volume:210, month:9, date:"2026-09-10", containerType:"40", route:"Đắk Lắk – Cảng Cái Mép"},
+  {org:"HTX Sầu riêng Ea Kar", contact:"Lê Văn Sơn", phone:"0987 224 668", region:"Ea Kar", volume:95, month:8, date:"2026-08-03", containerType:"20", route:"Đắk Lắk – Cảng Cát Lái"},
+  {org:"Cty Xuất khẩu Đại Việt", contact:"Phạm Thị Ngọc", phone:"0938 556 779", region:"Krông Búk", volume:180, month:9, date:"2026-09-18", containerType:"45", route:"Đắk Lắk – Cảng Cái Mép"},
+  {org:"HTX Krông Năng Phát", contact:"Đỗ Văn Tâm", phone:"0972 331 890", region:"Krông Năng", volume:70, month:10, date:"2026-10-14", containerType:"20", route:"Đắk Lắk – Cảng Cát Lái"},
+];
+
+/* ---------- Carrier directory (dùng để gợi ý sau khi đặt chỗ) ---------- */
+const carriers = [
+  {name:"Proship Logistics", phone:"0862 345 678", routes:["Đắk Lắk – Cảng Cát Lái","Đắk Lắk – Cảng Cái Mép"], containerTypes:["20","40","45"],
+   pricePerType:{20:3400000, 40:5800000, 45:6800000}, transitDays:2, operatingDays:["T2","T3","T4","T5","T6"],
+   fleet:{20:6, 40:10, 45:3}, depot:{name:"Kho lạnh Buôn Ma Thuột", lat:12.6667, lng:108.0500},
+   drivers:[{name:"Nguyễn Văn Hùng", phone:"0905 221 334", plate:"47C-111.22"},{name:"Trần Quốc Bảo", phone:"0913 556 778", plate:"47C-333.44"}]},
+  {name:"Ratraco Solutions", phone:"0906 771 234", routes:["Đắk Lắk – Cảng Cát Lái","Đắk Lắk – Cảng Cái Mép"], containerTypes:["20","40"],
+   pricePerType:{20:3300000, 40:5600000}, transitDays:3, operatingDays:["T2","T4","T6"],
+   fleet:{20:4, 40:7, 45:0}, depot:{name:"Bãi cont Krông Búk", lat:12.9950, lng:108.2270},
+   drivers:[{name:"Lê Minh Tuấn", phone:"0987 112 990", plate:"47H-556.78"}]},
+  {name:"Tây Nguyên Xanh Logistics", phone:"0913 558 902", routes:["Đắk Lắk – Cảng Cát Lái"], containerTypes:["20","40","45"],
+   pricePerType:{20:3200000, 40:5500000, 45:6500000}, transitDays:2, operatingDays:["all"],
+   fleet:{20:9, 40:12, 45:4}, depot:{name:"Kho lạnh Cư M'gar", lat:12.8500, lng:108.1167},
+   drivers:[{name:"Phạm Đức Anh", phone:"0938 774 112", plate:"47D-778.90"},{name:"Hồ Văn Lộc", phone:"0977 665 443", plate:"47D-889.01"}]},
+  {name:"Miền Trung Cold Chain", phone:"0977 224 610", routes:["Đắk Lắk – Cảng Cái Mép"], containerTypes:["40","45"],
+   pricePerType:{40:6000000, 45:7100000}, transitDays:2, operatingDays:["T3","T5","T7"],
+   fleet:{20:0, 40:5, 45:5}, depot:{name:"Kho lạnh Krông Pắc", lat:12.7233, lng:108.4181},
+   drivers:[{name:"Vũ Thành Nam", phone:"0912 334 556", plate:"47E-223.45"}]},
+  {name:"Đại Phát Vận Tải Lạnh", phone:"0938 116 289", routes:["Đắk Lắk – Cảng Cát Lái","Đắk Lắk – Cảng Cái Mép"], containerTypes:["20","40"],
+   pricePerType:{20:3500000, 40:5900000}, transitDays:1, operatingDays:["all"],
+   fleet:{20:8, 40:8, 45:0}, depot:{name:"Kho lạnh Ea Kar", lat:12.8100, lng:108.6350},
+   drivers:[{name:"Đặng Văn Phúc", phone:"0969 887 665", plate:"47F-990.11"},{name:"Ngô Thị Hạnh", phone:"0918 776 554", plate:"47F-001.22"}]},
+  {name:"Sơn Nam Cool Transport", phone:"0989 342 570", routes:["Đắk Lắk – Cảng Cát Lái"], containerTypes:["20"],
+   pricePerType:{20:3100000}, transitDays:3, operatingDays:["T2","T5"],
+   fleet:{20:3, 40:0, 45:0}, depot:{name:"Kho lạnh Krông Năng", lat:13.0430, lng:108.2670},
+   drivers:[{name:"Bùi Xuân Thịnh", phone:"0932 445 667", plate:"47G-112.33"}]},
+];
+
+/* ---------- Booking form ---------- */
+const form = document.getElementById('booking-form');
+const errorEl = document.getElementById('f-error');
+const toastEl = document.getElementById('f-toast');
+
+const PHONE_REGEX = /^(0|\+84)[0-9\s]{9,10}$/;
+
+form.addEventListener('submit', e=>{
+  e.preventDefault();
+  const org = document.getElementById('f-org').value.trim();
+  const contact = document.getElementById('f-contact').value.trim();
+  const phone = document.getElementById('f-phone').value.trim();
+  const region = document.getElementById('f-region').value;
+  const volume = parseFloat(document.getElementById('f-volume').value);
+  const month = document.getElementById('f-month').value;
+  const dateStr = document.getElementById('f-date').value;
+  const route = document.getElementById('f-route').value;
+  const containerType = document.getElementById('f-container').value;
+
+  const phoneValid = PHONE_REGEX.test(phone);
+  const dateInfo = dateInfoFromString(dateStr);
+
+  if(!org || !contact || !phone || !phoneValid || !region || !volume || volume<=0 || !month || !dateInfo || !containerType){
+    errorEl.style.display='block';
+    toastEl.style.display='none';
+    return;
+  }
+  errorEl.style.display='none';
+
+  bookings.push({org, contact, phone, region, volume, month:parseInt(month), date:dateStr, containerType, route});
+  document.getElementById('f-contact').value='';
+  document.getElementById('f-phone').value='';
+  document.getElementById('f-region').value='';
+  document.getElementById('f-volume').value='';
+  document.getElementById('f-month').value='';
+  document.getElementById('f-date').value='';
+  document.getElementById('f-date-info').textContent='';
+  document.getElementById('f-container').value='';
+
+  toastEl.textContent = 'Đã ghi nhận đăng ký của "'+org+'" (liên hệ: '+contact+'). Container ước tính: '+Math.ceil(volume/TONS_PER_CONTAINER)+' (loại '+containerType+'ft), vận chuyển '+dateInfo.formatted+' — Tuần '+dateInfo.week+' · '+weekdayLabel(dateInfo.weekday)+'.';
+  toastEl.style.display='block';
+
+  renderCarrierMatches(route, containerType, dateInfo.weekday);
+  renderBookingTable();
+  renderForecast();
+  renderCalendar();
+});
+
+function monthLabel(m){ return 'Tháng '+m; }
+function weekdayLabel(w){
+  const map = {T2:'Thứ Hai', T3:'Thứ Ba', T4:'Thứ Tư', T5:'Thứ Năm', T6:'Thứ Sáu', T7:'Thứ Bảy', CN:'Chủ Nhật'};
+  return map[w] || '';
+}
+function containerLabel(c){
+  return c ? c+'ft' : '';
+}
+function weekdayListLabel(days){
+  if(days.includes('all')) return 'Chạy hàng ngày';
+  return days.map(weekdayLabel).join(', ');
+}
+
+/* ---------- Tính tuần trong tháng + thứ trong tuần từ ngày cụ thể ---------- */
+const WEEKDAY_CODES = ['CN','T2','T3','T4','T5','T6','T7']; // trùng với Date.getDay(): 0=CN...6=T7
+function dateInfoFromString(dateStr){
+  if(!dateStr) return null;
+  const d = new Date(dateStr+'T00:00:00');
+  if(isNaN(d.getTime())) return null;
+  const weekday = WEEKDAY_CODES[d.getDay()];
+  const week = Math.ceil(d.getDate()/7);
+  const formatted = d.toLocaleDateString('vi-VN');
+  return {date:dateStr, weekday, week, formatted, month:d.getMonth()+1};
+}
+
+const dateInput = document.getElementById('f-date');
+const dateInfoEl = document.getElementById('f-date-info');
+dateInput.addEventListener('change', ()=>{
+  const info = dateInfoFromString(dateInput.value);
+  if(info){
+    dateInfoEl.textContent = 'Tuần '+info.week+' · '+weekdayLabel(info.weekday);
+    // đồng bộ luôn tháng vận chuyển dự kiến nếu khớp danh sách tháng đang hỗ trợ
+    const monthSelect = document.getElementById('f-month');
+    const monthOptionExists = Array.from(monthSelect.options).some(o=>o.value===String(info.month));
+    if(monthOptionExists) monthSelect.value = String(info.month);
+  } else {
+    dateInfoEl.textContent = '';
+  }
+});
+
+/* ---------- Tiện ích chat & dựng thẻ carrier dùng chung ---------- */
+function escapeHtml(str){
+  return String(str).replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
+}
+function escapeAttr(str){ return String(str).replace(/"/g,'&quot;'); }
+
+let carrierChats = {};
+function getChatState(name){
+  if(!carrierChats[name]) carrierChats[name] = {open:false, messages:[], dealClosed:false};
+  return carrierChats[name];
+}
+
+let lastMatchParams = null;
+
+function buildCarrierCardHtml(c, opts){
+  const filterType = opts.containerType;
+  const state = getChatState(c.name);
+  const priceChips = Object.keys(c.pricePerType).map(size=>{
+    const isSelected = size===filterType;
+    return `<span class="c-price-chip ${isSelected?'selected':''}">${size}ft: ${c.pricePerType[size].toLocaleString('vi-VN')} đ</span>`;
+  }).join('');
+  const fleetChips = ['20','40','45'].filter(size=>c.fleet && c.fleet[size]!==undefined).map(size=>
+    `<span class="cd-fleet-chip">${size}ft trống: ${c.fleet[size]}</span>`
+  ).join('');
+  const msgsHtml = state.messages.length
+    ? state.messages.map(m=>`<div class="chat-msg ${m.sender}">${escapeHtml(m.text)}<span class="m-time">${m.time}</span></div>`).join('')
+    : '<div style="font-size:12px;color:var(--muted);font-style:italic;">Chưa có tin nhắn — hỏi giá, lịch giao hàng hoặc điều kiện hợp đồng.</div>';
+  const dayBadge = opts.showDayBadge
+    ? `<div class="c-badge ${opts.hasDay?'':'warn'}" style="margin-top:6px;">${opts.hasDay ? 'Đúng ngày yêu cầu' : 'Không chạy '+weekdayLabel(opts.weekday)+' — cần đổi ngày'}</div>`
+    : '';
+
+  return `
+    <div class="carrier-dir-card">
+      <div class="carrier-dir-head">
+        <div>
+          <div class="cd-name">${opts.rank===0?'⭐ ':''}${c.name}</div>
+          <div class="cd-phone">📞 <a href="tel:${(c.phone||'').replace(/\s/g,'')}">${c.phone||'Chưa cập nhật'}</a></div>
+        </div>
+        <div class="c-right">
+          <div class="c-price">${(c.pricePerType[filterType]||0).toLocaleString('vi-VN')} đ</div>
+          <div style="font-size:10.5px;color:var(--muted);margin-top:-2px;">giá cont ${filterType}ft</div>
+          ${dayBadge}
+        </div>
+      </div>
+      <div class="c-price-list">${priceChips}</div>
+      ${fleetChips ? `<div class="cd-fleet">${fleetChips}</div>` : ''}
+      <div class="cd-meta-row">
+        <span>⏱ <strong>~${c.transitDays} ngày</strong> vận chuyển</span>
+        <span>📅 <strong>${weekdayListLabel(c.operatingDays)}</strong></span>
+        ${c.depot && c.depot.name ? `<span>📍 <strong>${c.depot.name}</strong> — <a class="cd-depot-link" href="https://www.google.com/maps?q=${c.depot.lat},${c.depot.lng}" target="_blank" rel="noopener">bản đồ ↗</a></span>` : ''}
+      </div>
+      <div class="cd-actions">
+        <button class="btn btn-frost btn-sm chat-toggle-btn" data-carrier="${escapeAttr(c.name)}">${state.open?'Đóng chat':'💬 Chat tư vấn giá'}</button>
+        ${state.dealClosed?'<span class="chat-deal-badge" style="margin-bottom:0;">✅ Đã chốt hợp đồng</span>':''}
+      </div>
+      <div class="chat-panel ${state.open?'open':''}">
+        <div class="chat-window">${msgsHtml}</div>
+        <div class="chat-input-row">
+          <input type="text" class="chat-input" data-carrier-input="${escapeAttr(c.name)}" placeholder="Nhập tin nhắn trao đổi giá, lịch giao hàng...">
+          <button class="btn btn-sm chat-send-btn" data-carrier="${escapeAttr(c.name)}">Gửi</button>
+        </div>
+        ${!state.dealClosed?`<button class="btn btn-sm chat-confirm-btn" style="background:var(--gold-dark);margin-top:10px;" data-carrier="${escapeAttr(c.name)}">✅ Chốt hợp đồng</button>`:''}
+      </div>
+    </div>
+  `;
+}
+
+function reRenderCarrierViews(){
+  if(lastMatchParams) renderCarrierMatches(lastMatchParams.route, lastMatchParams.containerType, lastMatchParams.weekday);
+  if(currentUser && currentUser.role !== 'carrier') renderCarrierDirectory();
+}
+
+function toggleChatPanel(name){
+  const s = getChatState(name);
+  s.open = !s.open;
+  reRenderCarrierViews();
+}
+
+function autoReplyFor(text){
+  const t = text.toLowerCase();
+  if(t.includes('giá') || t.includes('gia')) return 'Dạ giá trên đã gồm phí bốc xếp 2 đầu, có thể thương lượng thêm nếu ký từ 3 container trở lên ạ.';
+  if(t.includes('lịch') || t.includes('ngày') || t.includes('thời gian')) return 'Dạ bên em sắp xếp xe đúng ngày anh/chị chọn, sẽ xác nhận tài xế trong 30 phút ạ.';
+  if(t.includes('cont') || t.includes('container')) return 'Dạ hiện bên em vẫn còn cont trống cho tuyến này, anh/chị có thể chốt trước để giữ chỗ ạ.';
+  return 'Dạ em đã nhận được thông tin, để em kiểm tra và phản hồi sớm nhất ạ.';
+}
+
+function sendChatMessage(name){
+  if(!name) return;
+  const input = document.querySelector('[data-carrier-input="'+CSS.escape(name)+'"]');
+  if(!input) return;
+  const text = input.value.trim();
+  if(!text) return;
+  const s = getChatState(name);
+  const nowStr = ()=> new Date().toLocaleTimeString('vi-VN',{hour:'2-digit',minute:'2-digit'});
+  s.messages.push({sender:'me', text, time:nowStr()});
+  reRenderCarrierViews();
+  setTimeout(()=>{
+    s.messages.push({sender:'carrier', text:autoReplyFor(text), time:nowStr()});
+    reRenderCarrierViews();
+    const inp = document.querySelector('[data-carrier-input="'+CSS.escape(name)+'"]');
+    if(inp) inp.focus();
+  }, 650);
+}
+
+function confirmContract(name){
+  const s = getChatState(name);
+  s.dealClosed = true;
+  s.messages.push({sender:'system', text:'✅ Đã chốt hợp đồng vận chuyển với '+name+'.', time:new Date().toLocaleTimeString('vi-VN',{hour:'2-digit',minute:'2-digit'})});
+  reRenderCarrierViews();
+}
+
+function bindCarrierCardEvents(container){
+  if(!container) return;
+  container.addEventListener('click', e=>{
+    const chatBtn = e.target.closest('.chat-toggle-btn');
+    if(chatBtn){ toggleChatPanel(chatBtn.dataset.carrier); return; }
+    const sendBtn = e.target.closest('.chat-send-btn');
+    if(sendBtn){ sendChatMessage(sendBtn.dataset.carrier); return; }
+    const confirmBtn = e.target.closest('.chat-confirm-btn');
+    if(confirmBtn){ confirmContract(confirmBtn.dataset.carrier); return; }
+  });
+  container.addEventListener('keypress', e=>{
+    if(e.target.classList.contains('chat-input') && e.key==='Enter'){
+      e.preventDefault();
+      sendChatMessage(e.target.dataset.carrierInput);
+    }
+  });
+}
+bindCarrierCardEvents(document.getElementById('carrier-match-list'));
+bindCarrierCardEvents(document.getElementById('carrier-directory'));
+
+/* ---------- Gợi ý đơn vị vận tải sau khi đặt chỗ ---------- */
+function renderCarrierMatches(route, containerType, weekday){
+  lastMatchParams = {route, containerType, weekday};
+  const box = document.getElementById('carrier-match');
+  const list = document.getElementById('carrier-match-list');
+
+  let matches = carriers.filter(c => c.routes.includes(route) && c.containerTypes.includes(containerType));
+
+  if(!matches.length){
+    box.classList.remove('hidden');
+    list.innerHTML = '<p style="font-size:13.5px;color:var(--muted);">Chưa có đơn vị vận tải nào khớp tuyến và loại container này trong dữ liệu demo.</p>';
+    return;
+  }
+
+  matches.forEach(c=>{ c._hasDay = c.operatingDays.includes('all') || c.operatingDays.includes(weekday); });
+  // Ưu tiên: đúng ngày yêu cầu trước, sau đó giá thấp nhất, cuối cùng thời gian vận chuyển ngắn nhất
+  matches.sort((a,b)=>{
+    if(a._hasDay !== b._hasDay) return a._hasDay ? -1 : 1;
+    if(a.pricePerType[containerType] !== b.pricePerType[containerType]) return a.pricePerType[containerType]-b.pricePerType[containerType];
+    return a.transitDays - b.transitDays;
+  });
+
+  list.innerHTML = matches.slice(0,4).map((c,i)=> buildCarrierCardHtml(c, {
+    containerType, weekday, showDayBadge:true, hasDay:c._hasDay, rank:i
+  })).join('');
+  box.classList.remove('hidden');
+}
+
+/* ---------- Danh bạ đơn vị vận tải (tab riêng) ---------- */
+let directoryFilter = {route:'Đắk Lắk – Cảng Cát Lái', containerType:'20'};
+function renderCarrierDirectory(){
+  const box = document.getElementById('carrier-directory');
+  if(!box) return;
+
+  let list = carriers.filter(c => c.routes.includes(directoryFilter.route) && c.containerTypes.includes(directoryFilter.containerType));
+  list = list.slice().sort((a,b)=> a.pricePerType[directoryFilter.containerType]-b.pricePerType[directoryFilter.containerType]);
+
+  const filterHtml = `
+    <div class="filters" style="margin-bottom:18px;">
+      <select id="dir-route-filter">
+        <option value="Đắk Lắk – Cảng Cát Lái">Đắk Lắk – Cảng Cát Lái</option>
+        <option value="Đắk Lắk – Cảng Cái Mép">Đắk Lắk – Cảng Cái Mép</option>
+      </select>
+      <select id="dir-container-filter">
+        <option value="20">Container 20ft lạnh</option>
+        <option value="40">Container 40ft lạnh</option>
+        <option value="45">Container 45ft lạnh</option>
+      </select>
+    </div>
+  `;
+
+  const cardsHtml = list.length
+    ? list.map(c=> buildCarrierCardHtml(c, {containerType:directoryFilter.containerType, showDayBadge:false, rank:-1})).join('')
+    : '<p style="font-size:13.5px;color:var(--muted);">Không có đơn vị vận tải nào khớp bộ lọc đã chọn.</p>';
+
+  box.innerHTML = filterHtml + cardsHtml;
+
+  document.getElementById('dir-route-filter').value = directoryFilter.route;
+  document.getElementById('dir-container-filter').value = directoryFilter.containerType;
+  document.getElementById('dir-route-filter').addEventListener('change', e=>{ directoryFilter.route = e.target.value; renderCarrierDirectory(); });
+  document.getElementById('dir-container-filter').addEventListener('change', e=>{ directoryFilter.containerType = e.target.value; renderCarrierDirectory(); });
+}
+
+/* ---------- Hồ sơ tự quản lý của Đơn vị vận tải ---------- */
+function getOrCreateMyCarrierProfile(){
+  let mine = carriers.find(c=>c.name.toLowerCase()===currentUser.name.toLowerCase());
+  if(!mine){
+    mine = {
+      name:currentUser.name, phone:'', routes:["Đắk Lắk – Cảng Cát Lái","Đắk Lắk – Cảng Cái Mép"],
+      containerTypes:["20","40","45"], pricePerType:{20:0,40:0,45:0}, transitDays:2, operatingDays:["all"],
+      fleet:{20:0,40:0,45:0}, depot:{name:'', lat:'', lng:''}, drivers:[]
+    };
+    carriers.push(mine);
+  }
+  return mine;
+}
+
+function renderDriverTable(mine){
+  const body = document.getElementById('driver-table-body');
+  if(!body) return;
+  body.innerHTML = mine.drivers.length ? mine.drivers.map((d,i)=>`
+    <tr>
+      <td>${d.name}</td>
+      <td class="mono">${d.phone}</td>
+      <td class="mono">${d.plate}</td>
+      <td><button class="driver-row-actions" data-idx="${i}">Xóa</button></td>
+    </tr>
+  `).join('') : '<tr><td colspan="4" style="color:var(--muted);font-size:12.5px;">Chưa có tài xế nào.</td></tr>';
+}
+
+function renderCarrierSelfManage(){
+  const mine = getOrCreateMyCarrierProfile();
+
+  const fleetBox = document.getElementById('fleet-inputs');
+  fleetBox.innerHTML = ['20','40','45'].map(size=>`
+    <div>
+      <label for="fleet-input-${size}">Container ${size}ft (số xe trống)</label>
+      <input type="number" min="0" id="fleet-input-${size}" value="${mine.fleet[size]||0}">
+    </div>
+  `).join('');
+
+  document.getElementById('depot-name').value = mine.depot.name || '';
+  document.getElementById('depot-lat').value = mine.depot.lat || '';
+  document.getElementById('depot-lng').value = mine.depot.lng || '';
+
+  renderDriverTable(mine);
+
+  const note = document.getElementById('carrier-self-note');
+  if(note) note.textContent = 'Thông tin bạn cập nhật ở đây (số cont lạnh trống, tài xế, vị trí GPS bến) sẽ hiển thị cho Nông dân/HTX và Doanh nghiệp xuất khẩu khi họ tìm đơn vị vận tải phù hợp.';
+}
+
+function renderCarriersTab(){
+  const dirBox = document.getElementById('carrier-directory');
+  const selfBox = document.getElementById('carrier-self-manage');
+  const title = document.getElementById('carriers-title');
+  const desc = document.getElementById('carriers-desc');
+  if(currentUser.role === 'carrier'){
+    dirBox.classList.add('hidden');
+    selfBox.classList.remove('hidden');
+    title.textContent = 'Hồ sơ năng lực của đơn vị bạn';
+    desc.textContent = 'Cập nhật số container lạnh hiện có, danh sách tài xế và vị trí GPS bến/kho để Nông dân, HTX và Doanh nghiệp xuất khẩu tìm thấy và liên hệ.';
+    renderCarrierSelfManage();
+  } else {
+    selfBox.classList.add('hidden');
+    dirBox.classList.remove('hidden');
+    title.textContent = 'Đơn vị vận tải & kho lạnh';
+    desc.textContent = 'Xem năng lực đội xe lạnh, liên hệ trực tiếp, chat tư vấn giá và chốt hợp đồng ngay trên nền tảng.';
+    renderCarrierDirectory();
+  }
+}
+
+document.getElementById('fleet-save-btn').addEventListener('click', ()=>{
+  const mine = getOrCreateMyCarrierProfile();
+  ['20','40','45'].forEach(size=>{
+    const el = document.getElementById('fleet-input-'+size);
+    const val = parseInt(el.value);
+    mine.fleet[size] = isNaN(val) ? 0 : val;
+  });
+  const toast = document.getElementById('fleet-toast');
+  toast.textContent = 'Đã cập nhật số lượng container lạnh trống.';
+  toast.style.display='block';
+  reRenderCarrierViews();
+});
+
+document.getElementById('depot-save-btn').addEventListener('click', ()=>{
+  const mine = getOrCreateMyCarrierProfile();
+  const name = document.getElementById('depot-name').value.trim();
+  const lat = parseFloat(document.getElementById('depot-lat').value);
+  const lng = parseFloat(document.getElementById('depot-lng').value);
+  const toast = document.getElementById('depot-toast');
+  if(!name || isNaN(lat) || isNaN(lng)){
+    toast.textContent = 'Vui lòng nhập đầy đủ tên bến và tọa độ hợp lệ.';
+    toast.style.display='block';
+    return;
+  }
+  mine.depot = {name, lat, lng};
+  toast.textContent = 'Đã cập nhật vị trí GPS bến.';
+  toast.style.display='block';
+  reRenderCarrierViews();
+});
+
+document.getElementById('depot-geoloc-btn').addEventListener('click', ()=>{
+  const toast = document.getElementById('depot-toast');
+  if(!navigator.geolocation){
+    toast.textContent = 'Trình duyệt không hỗ trợ định vị GPS.';
+    toast.style.display='block';
+    return;
+  }
+  navigator.geolocation.getCurrentPosition(pos=>{
+    document.getElementById('depot-lat').value = pos.coords.latitude.toFixed(4);
+    document.getElementById('depot-lng').value = pos.coords.longitude.toFixed(4);
+    toast.textContent = 'Đã lấy vị trí hiện tại — nhớ bấm "Cập nhật vị trí GPS" để lưu.';
+    toast.style.display='block';
+  }, ()=>{
+    toast.textContent = 'Không lấy được vị trí (trình duyệt có thể đã chặn quyền truy cập).';
+    toast.style.display='block';
+  });
+});
+
+document.getElementById('driver-add-btn').addEventListener('click', ()=>{
+  const mine = getOrCreateMyCarrierProfile();
+  const name = document.getElementById('driver-name').value.trim();
+  const phone = document.getElementById('driver-phone').value.trim();
+  const plate = document.getElementById('driver-plate').value.trim();
+  const toast = document.getElementById('driver-toast');
+  if(!name || !phone || !PHONE_REGEX.test(phone) || !plate){
+    toast.textContent = 'Vui lòng điền đầy đủ tên, số điện thoại hợp lệ và biển số xe.';
+    toast.style.display='block';
+    return;
+  }
+  mine.drivers.push({name, phone, plate});
+  document.getElementById('driver-name').value='';
+  document.getElementById('driver-phone').value='';
+  document.getElementById('driver-plate').value='';
+  toast.textContent = 'Đã thêm tài xế "'+name+'".';
+  toast.style.display='block';
+  renderDriverTable(mine);
+});
+
+document.getElementById('driver-table-body').addEventListener('click', e=>{
+  const btn = e.target.closest('.driver-row-actions');
+  if(!btn) return;
+  const mine = getOrCreateMyCarrierProfile();
+  const idx = parseInt(btn.dataset.idx);
+  mine.drivers.splice(idx,1);
+  renderDriverTable(mine);
+});
+
+function renderBookingTable(){
+  const body = document.getElementById('booking-table-body');
+  body.innerHTML = '';
+  bookings.slice().reverse().forEach(b=>{
+    const tr = document.createElement('tr');
+    const info = dateInfoFromString(b.date);
+    const shipText = info
+      ? info.formatted+' · Tuần '+info.week+' · '+weekdayLabel(info.weekday)
+      : monthLabel(b.month);
+    tr.innerHTML = `
+      <td>${b.org}</td>
+      <td>${b.contact ? b.contact : '—'}${b.phone ? '<br><span class="mono" style="color:var(--muted);font-size:12px;">'+b.phone+'</span>' : ''}</td>
+      <td>${b.region}</td>
+      <td class="mono">${b.volume} tấn</td>
+      <td>${shipText}</td>
+      <td>${b.containerType ? containerLabel(b.containerType) : '—'}</td>
+      <td class="mono">${Math.ceil(b.volume/TONS_PER_CONTAINER)}</td>
+      <td><span class="pill pill-registered">Đã đăng ký</span></td>
+    `;
+    body.appendChild(tr);
+  });
+  document.getElementById('booking-count').textContent = '('+bookings.length+' đơn vị)';
+}
+
+/* ---------- Lịch giữ chỗ theo ngày (kết hợp từ mô hình DurianLink) ---------- */
+let calMonth = 8;
+const CAL_YEAR = 2026;
+const CAL_MONTHS = [8,9,10];
+const CAPACITY_PER_DAY = 24; // ước tính năng lực cont lạnh khả dụng mỗi ngày trong vùng, dùng để tô màu mật độ
+
+function daysInMonth(y,m){ return new Date(y,m,0).getDate(); }
+function mondayIndex(y,m,d){
+  const day = new Date(y,m-1,d).getDay(); // 0=CN..6=T7
+  return (day+6)%7; // 0=T2..6=CN
+}
+
+function renderCalendar(){
+  const grid = document.getElementById('cal-grid');
+  if(!grid) return;
+
+  document.getElementById('cal-title').textContent = 'Lịch giữ chỗ container — '+monthLabel(calMonth)+', '+CAL_YEAR;
+
+  grid.innerHTML = '';
+  ['T2','T3','T4','T5','T6','T7','CN'].forEach(d=>{
+    const el = document.createElement('div'); el.className='cal-dow'; el.textContent=d; grid.appendChild(el);
+  });
+
+  const totalDays = daysInMonth(CAL_YEAR, calMonth);
+  const offset = mondayIndex(CAL_YEAR, calMonth, 1);
+  for(let i=0;i<offset;i++){ const e=document.createElement('div'); e.className='cal-day empty'; grid.appendChild(e); }
+
+  const byDate = {};
+  bookings.forEach(b=>{
+    const info = dateInfoFromString(b.date);
+    if(info && info.month===calMonth){
+      byDate[b.date] = (byDate[b.date]||0) + Math.ceil(b.volume/TONS_PER_CONTAINER);
+    }
+  });
+
+  const selectedDate = document.getElementById('f-date') ? document.getElementById('f-date').value : '';
+
+  for(let d=1; d<=totalDays; d++){
+    const dateStr = CAL_YEAR+'-'+String(calMonth).padStart(2,'0')+'-'+String(d).padStart(2,'0');
+    const booked = byDate[dateStr] || 0;
+    const avail = Math.max(CAPACITY_PER_DAY - booked, 0);
+    let state = 'free';
+    if(booked >= CAPACITY_PER_DAY*0.8) state = 'busy';
+    else if(booked >= CAPACITY_PER_DAY*0.4) state = 'medium';
+
+    const el = document.createElement('div');
+    el.className = 'cal-day '+state+(dateStr===selectedDate?' selected':'');
+    el.innerHTML = d+'<div class="cnt">'+avail+' cont</div>';
+    el.dataset.date = dateStr;
+    el.addEventListener('click', ()=>{
+      const dateField = document.getElementById('f-date');
+      if(!dateField || dateField.disabled) return;
+      document.querySelectorAll('.cal-day').forEach(c=>c.classList.remove('selected'));
+      el.classList.add('selected');
+      dateField.value = dateStr;
+      dateField.dispatchEvent(new Event('change'));
+    });
+    grid.appendChild(el);
+  }
+}
+
+document.getElementById('cal-prev').addEventListener('click', ()=>{
+  const i = CAL_MONTHS.indexOf(calMonth);
+  calMonth = CAL_MONTHS[(i-1+CAL_MONTHS.length)%CAL_MONTHS.length];
+  renderCalendar();
+});
+document.getElementById('cal-next').addEventListener('click', ()=>{
+  const i = CAL_MONTHS.indexOf(calMonth);
+  calMonth = CAL_MONTHS[(i+1)%CAL_MONTHS.length];
+  renderCalendar();
+});
+
+/* ---------- Season timeline ---------- */
+const seasonTrack = document.getElementById('season-track');
+const monthShort = ['T1','T2','T3','T4','T5','T6','T7','T8','T9','T10','T11','T12'];
+const peakMonths = [8,9,10];
+monthShort.forEach((label,idx)=>{
+  const m = idx+1;
+  const div = document.createElement('div');
+  const isPeak = peakMonths.includes(m);
+  div.style.background = isPeak
+    ? 'linear-gradient(180deg,#D9A441,#A87A28)'
+    : 'linear-gradient(180deg,#2C4F3D,#1F3A2E)';
+  div.textContent = label;
+  if(m===9){
+    const badge = document.createElement('span');
+    badge.className='peak-badge';
+    badge.textContent='Cao điểm thu hoạch';
+    div.appendChild(badge);
+  }
+  seasonTrack.appendChild(div);
+});
+
+/* ---------- Forecast ---------- */
+let forecastChart;
+function renderForecast(){
+  const monthly = {};
+  for(let m=1;m<=12;m++) monthly[m] = {volume:0, containers:0};
+  bookings.forEach(b=>{
+    monthly[b.month].volume += b.volume;
+    monthly[b.month].containers += Math.ceil(b.volume/TONS_PER_CONTAINER);
+  });
+
+  const labels = Object.keys(monthly).map(m=>'T'+m);
+  const volData = Object.values(monthly).map(v=>v.volume);
+  const contData = Object.values(monthly).map(v=>v.containers);
+
+  const totalVol = volData.reduce((a,b)=>a+b,0);
+  const totalCont = contData.reduce((a,b)=>a+b,0);
+  let peakIdx = 0;
+  contData.forEach((v,i)=>{ if(v>contData[peakIdx]) peakIdx=i; });
+
+  document.getElementById('stat-total-vol').textContent = totalVol.toLocaleString('vi-VN');
+  document.getElementById('stat-total-cont').textContent = totalCont.toLocaleString('vi-VN');
+  document.getElementById('stat-peak-month').textContent = totalCont>0 ? monthLabel(peakIdx+1) : '–';
+
+  document.getElementById('recommendation').innerHTML = totalCont>0 ? `
+    <p>Dựa trên <strong>${bookings.length} đơn vị</strong> đã đăng ký, nhu cầu tập trung mạnh vào
+    <strong>${monthLabel(peakIdx+1)}</strong> với khoảng <strong>${contData[peakIdx]} container</strong> lạnh 20ft.</p>
+    <p>Khuyến nghị: hãng tàu nên giữ chỗ trước cho tuyến Đắk Lắk ít nhất <strong>4–6 tuần</strong> trước tháng cao điểm,
+    và ưu tiên phân bổ thêm container cho các vùng có sản lượng đăng ký lớn nhất.</p>
+  ` : '<p>Chưa có dữ liệu đăng ký.</p>';
+
+  const ctx = document.getElementById('forecast-chart');
+  if(forecastChart) forecastChart.destroy();
+  forecastChart = new Chart(ctx, {
+    data:{
+      labels,
+      datasets:[
+        {type:'bar', label:'Sản lượng (tấn)', data:volData, backgroundColor:'#5FA9C4', borderRadius:4, order:2},
+        {type:'line', label:'Container cần', data:contData, borderColor:'#D9A441', backgroundColor:'#D9A441',
+         yAxisID:'y1', tension:.3, pointRadius:3, borderWidth:2.5, order:1}
+      ]
+    },
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      interaction:{mode:'index', intersect:false},
+      plugins:{legend:{position:'bottom', labels:{font:{family:'Inter'}}}},
+      scales:{
+        y:{title:{display:true,text:'Tấn'}, grid:{color:'#EDE8D8'}},
+        y1:{position:'right', title:{display:true,text:'Container'}, grid:{display:false}},
+        x:{grid:{display:false}}
+      }
+    }
+  });
+}
+
+/* ---------- Tracking ---------- */
+const stages = ['Đã đặt chỗ','Đóng hàng tại vườn','Vận chuyển ra cảng','Tại cảng chờ xuất','Đã xuất khẩu'];
+let shipments = [
+  {id:'SR-2601', org:'HTX Nông sản Krông Pắc', route:'Đắk Lắk – Cát Lái', containers:6, stage:1, location:'Vườn thu hoạch, Krông Pắc', plate:'47C-123.45', gps:{lat:12.7233, lng:108.4181}, temp:'2.1°C', tempOk:true, updated:'12 phút trước', tempHistory:[2.4,2.3,2.2,2.1,2.2,2.1]},
+  {id:'SR-2598', org:'Cty XNK Tây Nguyên Xanh', route:'Đắk Lắk – Cái Mép', containers:9, stage:2, location:'QL26, cách cảng 180km', plate:'47H-678.90', gps:{lat:12.5510, lng:108.7520}, temp:'2.4°C', tempOk:true, updated:'34 phút trước', tempHistory:[2.0,2.2,2.5,2.3,2.6,2.4]},
+  {id:'SR-2591', org:'Cty Xuất khẩu Đại Việt', route:'Đắk Lắk – Cái Mép', containers:12, stage:3, location:'Cảng Cái Mép, bãi chờ B4', plate:'51D-456.78', gps:{lat:10.5296, lng:107.0181}, temp:'4.8°C', tempOk:false, updated:'2 giờ trước', tempHistory:[2.6,3.1,3.8,4.2,4.6,4.8]},
+  {id:'SR-2584', org:'HTX Sầu riêng Ea Kar', route:'Đắk Lắk – Cát Lái', containers:5, stage:4, location:'Đã lên tàu — rời cảng Cát Lái', plate:'50H-321.09', gps:{lat:10.7745, lng:106.7896}, temp:'2.0°C', tempOk:true, updated:'1 ngày trước', tempHistory:[2.2,2.1,1.9,2.0,2.1,2.0]},
+];
+
+function renderShipments(){
+  if(!currentUser) return;
+  const noteEl = document.getElementById('tracking-note');
+  let list = shipments;
+  const isCarrier = currentUser.role === 'carrier';
+
+  if(currentUser.role === 'export'){
+    const own = shipments.filter(s=>s.org.toLowerCase().includes(currentUser.name.toLowerCase()));
+    if(own.length){
+      list = own;
+      noteEl.classList.remove('hidden');
+      noteEl.textContent = 'Đang hiển thị các đơn hàng của "'+currentUser.name+'".';
+    } else {
+      list = shipments;
+      noteEl.classList.remove('hidden');
+      noteEl.textContent = 'Chưa có đơn hàng nào khớp tên "'+currentUser.name+'" trong dữ liệu demo — hiển thị toàn bộ đơn hàng mẫu để minh họa.';
+    }
+  } else if(isCarrier){
+    noteEl.classList.remove('hidden');
+    noteEl.textContent = 'Vai trò đơn vị vận tải có quyền cập nhật trạng thái vận chuyển cho tất cả đơn hàng.';
+  } else {
+    noteEl.classList.add('hidden');
+  }
+
+  const wrap = document.getElementById('ship-list');
+  wrap.innerHTML = '';
+  list.forEach(s=>{
+    const idx = shipments.indexOf(s);
+    const card = document.createElement('div');
+    card.className = 'ship-card';
+    let stepsHtml = '';
+    stages.forEach((label,i)=>{
+      let cls = '';
+      if(i < s.stage) cls='done'; else if(i===s.stage) cls='current';
+      stepsHtml += `<div class="step ${cls}"><div class="line"></div><div class="dot"></div><div class="label">${label}</div></div>`;
+    });
+    const isLast = s.stage >= stages.length-1;
+    card.innerHTML = `
+      <div class="ship-head">
+        <div>
+          <div class="ship-id mono">${s.id}</div>
+          <div class="ship-title">${s.org}</div>
+        </div>
+        <div class="ship-head-right">
+          <span class="pill ${s.tempOk?'pill-port':'pill-warn'}">${s.tempOk?'Nhiệt độ ổn định':'Cảnh báo nhiệt độ'}</span>
+          ${isCarrier ? `<button class="btn btn-frost btn-sm" data-idx="${idx}" ${isLast?'disabled style="opacity:.4;cursor:not-allowed;"':''}>Cập nhật trạng thái</button>` : ''}
+        </div>
+      </div>
+      <div class="stepper">${stepsHtml}</div>
+      <div class="ship-meta">
+        <div><div class="k">Tuyến</div><div class="v">${s.route}</div></div>
+        <div><div class="k">Số container</div><div class="v">${s.containers}</div></div>
+        <div><div class="k">Biển số xe</div><div class="v mono">${s.plate}</div></div>
+        <div><div class="k">Vị trí hiện tại</div><div class="v">${s.location}</div></div>
+        <div><div class="k">GPS</div><div class="v"><a href="https://www.google.com/maps?q=${s.gps.lat},${s.gps.lng}" target="_blank" rel="noopener" class="mono" style="color:var(--frost-dark);text-decoration:none;">${s.gps.lat.toFixed(4)}, ${s.gps.lng.toFixed(4)} ↗</a></div></div>
+        <div><div class="k">Nhiệt độ container</div><div class="v ${s.tempOk?'temp-ok':'temp-warn'}">${s.temp}</div></div>
+        <div><div class="k">Cập nhật lúc</div><div class="v">${s.updated}</div></div>
+      </div>
+      ${!s.tempOk ? `
+      <div class="alert-box">
+        <div class="ico">⚠️</div>
+        <div>
+          <b>Cảnh báo vượt ngưỡng nhiệt độ</b>
+          <p>Nhiệt độ hiện tại ${s.temp} đã vượt ngưỡng cho phép (dưới 4°C) trong container này. Cần kiểm tra máy lạnh hoặc chuẩn bị phương án đổi container dự phòng.</p>
+        </div>
+      </div>` : ''}
+      <div class="temp-chart-wrap"><canvas id="temp-chart-${idx}"></canvas></div>
+    `;
+    wrap.appendChild(card);
+  });
+
+  shipments.forEach((s,i)=>{ if(list.includes(s)) drawTempChart(i, s); });
+
+  if(isCarrier){
+    wrap.querySelectorAll('button[data-idx]').forEach(btn=>{
+      btn.addEventListener('click', ()=>{
+        const i = parseInt(btn.dataset.idx);
+        if(shipments[i].stage < stages.length-1){
+          shipments[i].stage += 1;
+          shipments[i].location = stages[shipments[i].stage];
+          shipments[i].updated = 'vừa xong';
+          renderShipments();
+        }
+      });
+    });
+  }
+}
+
+let tempCharts = {};
+function drawTempChart(idx, s){
+  const canvas = document.getElementById('temp-chart-'+idx);
+  if(!canvas || typeof Chart === 'undefined') return;
+  if(tempCharts[idx]) tempCharts[idx].destroy();
+  const labels = ['-2g','-1.5g','-1g','-0.5g','-15p','Hiện tại'];
+  tempCharts[idx] = new Chart(canvas, {
+    type:'line',
+    data:{
+      labels,
+      datasets:[
+        {label:'Nhiệt độ (°C)', data:s.tempHistory, borderColor:'#B4502E', backgroundColor:'rgba(180,80,46,0.08)', fill:true, tension:.35, pointRadius:2, borderWidth:2},
+        {label:'Ngưỡng cho phép', data:labels.map(()=>4), borderColor:'#5FA9C4', borderDash:[5,5], pointRadius:0, borderWidth:1.5}
+      ]
+    },
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      plugins:{legend:{display:false}},
+      scales:{
+        y:{ ticks:{font:{size:10}, callback:v=>v+'°'}, grid:{color:'#EDE8D8'} },
+        x:{ ticks:{font:{size:9}}, grid:{display:false} }
+      }
+    }
+  });
+}
+
+/* ---------- Pricing ---------- */
+let priceData = {
+  catlai:{
+    20:[3200000,3200000,3300000,3300000,3400000,3600000,4100000,5200000,5600000,4800000,3700000,3400000],
+    40:[5400000,5400000,5500000,5600000,5800000,6100000,7000000,8900000,9500000,8100000,6300000,5800000]
+  },
+  caimep:{
+    20:[3400000,3400000,3500000,3500000,3600000,3800000,4300000,5500000,5900000,5000000,3900000,3600000],
+    40:[5700000,5700000,5800000,5900000,6100000,6400000,7300000,9300000,9900000,8500000,6600000,6100000]
+  }
+};
+
+let priceChart;
+function renderPricing(){
+  if(!currentUser) return;
+  const isCarrier = currentUser.role === 'carrier';
+  document.getElementById('pricing-note').classList.toggle('hidden', isCarrier);
+  document.getElementById('price-edit-head').classList.toggle('hidden', !isCarrier);
+  document.getElementById('price-publish-btn').classList.toggle('hidden', !isCarrier);
+
+  const route = document.getElementById('price-route').value;
+  const size = document.getElementById('price-size').value;
+  const data = priceData[route][size];
+  const labels = monthShort;
+
+  const ctx = document.getElementById('price-chart');
+  if(priceChart) priceChart.destroy();
+  priceChart = new Chart(ctx,{
+    type:'line',
+    data:{
+      labels,
+      datasets:[{
+        label:'Giá cước (VNĐ / container '+size+'ft lạnh)',
+        data,
+        borderColor:'#B4502E',
+        backgroundColor:'rgba(180,80,46,0.1)',
+        fill:true,
+        tension:.3,
+        pointRadius:3,
+        borderWidth:2.5
+      }]
+    },
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      plugins:{legend:{display:false}},
+      scales:{
+        y:{ticks:{callback:v=>(v/1000000).toFixed(1)+'tr'}, grid:{color:'#EDE8D8'}},
+        x:{grid:{display:false}}
+      }
+    }
+  });
+
+  const body = document.getElementById('price-table-body');
+  body.innerHTML = '';
+  const avg = data.reduce((a,b)=>a+b,0)/data.length;
+  data.forEach((price,i)=>{
+    const diffPct = ((price-avg)/avg*100).toFixed(0);
+    const isPeak = peakMonths.includes(i+1);
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>${monthLabel(i+1)}</td>
+      <td class="mono">${price.toLocaleString('vi-VN')} đ</td>
+      <td class="${isPeak?'spike':''}">${diffPct>0?'+':''}${diffPct}% so với TB năm</td>
+      <td class="${isCarrier?'':'hidden'}"><input type="number" class="price-input mono" data-month="${i}" value="${price}" step="50000"></td>
+    `;
+    body.appendChild(tr);
+  });
+
+  document.getElementById('price-updated').textContent = new Date().toLocaleDateString('vi-VN');
+}
+
+document.getElementById('price-route').addEventListener('change', renderPricing);
+document.getElementById('price-size').addEventListener('change', renderPricing);
+
+/* ---------- Đánh giá đơn vị vận tải (kết hợp từ mô hình DurianLink) ---------- */
+const carrierRatings = [
+  {name:"Đại Phát Vận Tải Lạnh", score:4.9, good:["Đúng hẹn 98%","Giao nhanh 1 ngày"], bad:[], review:"Giao liên tục nhiều chuyến không lệch nhiệt độ dù cao điểm nắng nóng tháng 6."},
+  {name:"Tây Nguyên Xanh Logistics", score:4.7, good:["Đội xe đông nhất vùng","Giá cạnh tranh"], bad:["Đôi lúc trễ giờ lấy hàng"], review:"Chất lượng ổn định, chỉ có 1 lần trễ 40 phút lúc lấy hàng vào mùa cao điểm."},
+  {name:"Proship Logistics", score:4.5, good:["Xử lý sự cố tốt","Chạy nhiều tuyến"], bad:["Cont cũ hơn, máy lạnh yếu"], review:"Khi cont bị trễ đông đá đã chủ động đổi cont dự phòng trong vòng 1 giờ."},
+  {name:"Ratraco Solutions", score:4.2, good:["Giá hợp lý"], bad:["Chạy ít ngày trong tuần"], review:"Giá tốt nhưng lịch chạy hạn chế, cần đặt sớm để giữ đúng ngày mong muốn."},
+  {name:"Miền Trung Cold Chain", score:4.0, good:["Chuyên tuyến Cái Mép"], bad:["2 lần vượt ngưỡng nhiệt độ","Chậm phản hồi cảnh báo"], review:"Giá tốt nhưng đội vận hành phản hồi cảnh báo nhiệt độ khá chậm, cần giám sát sát sao hơn."},
+  {name:"Sơn Nam Cool Transport", score:3.8, good:["Giá rẻ nhất tuyến Cát Lái"], bad:["Chỉ chạy 2 ngày/tuần","Đội xe nhỏ"], review:"Phù hợp lô hàng nhỏ đặt trước sớm, không phù hợp nhu cầu gấp."},
+];
+
+function renderRatings(){
+  const wrap = document.getElementById('ratings-list');
+  if(!wrap) return;
+  wrap.innerHTML = carrierRatings.map(r=>`
+    <div class="rate-card">
+      <div class="rate-score">${r.score}</div>
+      <div class="rate-body">
+        <div style="font-weight:600;font-size:15px;color:var(--forest);">${r.name}</div>
+        <div class="rate-tags">
+          ${r.good.map(g=>`<span class="rtag">✓ ${escapeHtml(g)}</span>`).join('')}
+          ${r.bad.map(b=>`<span class="rtag bad">✗ ${escapeHtml(b)}</span>`).join('')}
+        </div>
+        <div class="review-txt">"${escapeHtml(r.review)}"</div>
+      </div>
+    </div>
+  `).join('');
+}
+
+document.getElementById('price-publish-btn').addEventListener('click', ()=>{
+  const route = document.getElementById('price-route').value;
+  const size = document.getElementById('price-size').value;
+  const inputs = document.querySelectorAll('.price-input');
+  inputs.forEach(inp=>{
+    const m = parseInt(inp.dataset.month);
+    const val = parseFloat(inp.value);
+    if(!isNaN(val) && val>0) priceData[route][size][m] = val;
+  });
+  const toast = document.getElementById('price-toast');
+  toast.textContent = 'Đã công bố bảng giá cước mới cho tuyến này.';
+  toast.style.display = 'block';
+  renderPricing();
+});
+</script>
+</body>
+</html>
