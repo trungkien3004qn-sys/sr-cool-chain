@@ -327,9 +327,49 @@
     </div>
 
     <label for="login-name">Tên đơn vị / cá nhân</label>
-    <input id="login-name" type="text" placeholder="VD: HTX Nông sản Krông Pắc">
-    <div class="login-error" id="login-error">Vui lòng chọn vai trò và nhập tên đơn vị.</div>
-    <button class="btn" id="login-submit">Vào hệ thống</button>
+<input
+  id="login-name"
+  type="text"
+  placeholder="VD: HTX Nông sản Krông Pắc"
+  autocomplete="organization"
+>
+
+<label for="login-email" style="margin-top:14px;">Email</label>
+<input
+  id="login-email"
+  type="email"
+  placeholder="VD: tenban@gmail.com"
+  autocomplete="email"
+>
+
+<div class="login-error" id="login-error">
+  Vui lòng nhập đầy đủ thông tin.
+</div>
+
+<div
+  id="login-status"
+  style="display:none; margin-top:10px; color:var(--forest); font-size:13px;"
+></div>
+
+<button class="btn" id="login-submit" type="button">
+  Gửi mã OTP
+</button>
+
+<div id="otp-section" class="hidden" style="margin-top:18px;">
+  <label for="login-otp">Mã OTP trong email</label>
+  <input
+    id="login-otp"
+    type="text"
+    inputmode="numeric"
+    maxlength="8"
+    autocomplete="one-time-code"
+    placeholder="Nhập mã OTP"
+  >
+
+  <button class="btn" id="otp-submit" type="button">
+    Xác nhận OTP và đăng nhập
+  </button>
+</div>
   </div>
 </div>
 
@@ -350,7 +390,7 @@
         <div class="u-name" id="u-name"></div>
         <div class="u-role" id="u-role"></div>
       </div>
-      <button id="logout-btn">Đổi vai trò</button>
+      <button id="logout-btn">Đăng xuất</button>
     </div>
   </div>
   <div class="topbar-inner topbar-row2">
@@ -673,25 +713,243 @@ document.querySelectorAll('.role-card').forEach(card=>{
   });
 });
 
-document.getElementById('login-submit').addEventListener('click', ()=>{
+let pendingLogin = null;
+
+document.getElementById('login-submit').addEventListener('click', async ()=>{
   const name = document.getElementById('login-name').value.trim();
+  const email = document.getElementById('login-email').value.trim();
   const err = document.getElementById('login-error');
-  if(!selectedRole || !name){
-    err.style.display='block';
+  const status = document.getElementById('login-status');
+  const button = document.getElementById('login-submit');
+
+  err.style.display = 'none';
+  status.style.display = 'none';
+
+  if(!selectedRole || !name || !email){
+    err.textContent = 'Vui lòng chọn vai trò, nhập tên và email.';
+    err.style.display = 'block';
     return;
   }
-  err.style.display='none';
-  currentUser = {role:selectedRole, name};
-  enterApp();
+
+  const emailHopLe = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+  if(!emailHopLe.test(email)){
+    err.textContent = 'Địa chỉ email không hợp lệ.';
+    err.style.display = 'block';
+    return;
+  }
+
+  if(!window.supabaseClient){
+    err.textContent = 'Supabase chưa sẵn sàng. Hãy tải lại trang.';
+    err.style.display = 'block';
+    return;
+  }
+
+  button.disabled = true;
+  button.textContent = 'Đang gửi mã...';
+
+  try{
+    const { error } =
+      await window.supabaseClient.auth.signInWithOtp({
+        email,
+        options: {
+          shouldCreateUser: true
+        }
+      });
+
+    if(error) throw error;
+
+    pendingLogin = {
+      name,
+      email,
+      role: selectedRole
+    };
+
+    document.getElementById('otp-section')
+      .classList.remove('hidden');
+
+    status.textContent =
+      'Mã OTP đã được gửi. Hãy kiểm tra email và thư rác.';
+    status.style.display = 'block';
+
+    document.getElementById('login-otp').focus();
+  }catch(error){
+    console.error('Lỗi gửi OTP:', error);
+
+    err.textContent =
+      'Không thể gửi OTP: ' +
+      (error.message || 'Lỗi không xác định');
+
+    err.style.display = 'block';
+  }finally{
+    button.disabled = false;
+    button.textContent = 'Gửi lại mã OTP';
+  }
+});
+const DB_ROLE_BY_UI = {
+  farmer: 'farmer',
+  export: 'exporter',
+  carrier: 'carrier'
+};
+
+const UI_ROLE_BY_DB = {
+  farmer: 'farmer',
+  exporter: 'export',
+  carrier: 'carrier'
+};
+
+document.getElementById('otp-submit').addEventListener('click', async ()=>{
+  const otpInput = document.getElementById('login-otp');
+  const token = otpInput.value.replace(/\D/g, '');
+  const err = document.getElementById('login-error');
+  const status = document.getElementById('login-status');
+  const button = document.getElementById('otp-submit');
+
+  err.style.display = 'none';
+
+  if(!pendingLogin){
+    err.textContent = 'Hãy yêu cầu gửi mã OTP trước.';
+    err.style.display = 'block';
+    return;
+  }
+
+  if(!/^\d{8}$/.test(token)){
+    err.textContent = 'Mã OTP phải gồm đúng 8 chữ số.';
+    err.style.display = 'block';
+    return;
+  }
+
+  button.disabled = true;
+  button.textContent = 'Đang xác nhận...';
+
+  try{
+    const { data, error } =
+      await window.supabaseClient.auth.verifyOtp({
+        email: pendingLogin.email,
+        token,
+        type: 'email'
+      });
+
+    if(error) throw error;
+
+    if(!data.user){
+      throw new Error('Không tìm thấy thông tin người dùng.');
+    }
+
+    const user = data.user;
+
+    const {
+      data: existingProfile,
+      error: profileError
+    } = await window.supabaseClient
+      .from('profiles')
+      .select('full_name, role, account_status')
+      .eq('id', user.id)
+      .maybeSingle();
+
+    if(profileError) throw profileError;
+
+    let profile = existingProfile;
+
+    if(!profile){
+      const databaseRole = DB_ROLE_BY_UI[pendingLogin.role];
+
+      const {
+        data: newProfile,
+        error: createError
+      } = await window.supabaseClient
+        .from('profiles')
+        .insert({
+          id: user.id,
+          full_name: pendingLogin.name,
+          organization_name: pendingLogin.name,
+          role: databaseRole
+        })
+        .select('full_name, role, account_status')
+        .single();
+
+      if(createError) throw createError;
+
+      profile = newProfile;
+    }
+
+    if(profile.account_status === 'blocked'){
+      await window.supabaseClient.auth.signOut();
+      throw new Error('Tài khoản này đã bị khóa.');
+    }
+
+    const interfaceRole = UI_ROLE_BY_DB[profile.role];
+
+    if(!interfaceRole){
+      throw new Error('Vai trò người dùng không hợp lệ.');
+    }
+
+    currentUser = {
+      role: interfaceRole,
+      name: profile.full_name
+    };
+
+    status.style.display = 'none';
+    err.style.display = 'none';
+
+    enterApp();
+  }catch(error){
+    console.error('Lỗi xác nhận OTP:', error);
+
+    err.textContent =
+      'Không thể đăng nhập: ' +
+      (error.message || 'Lỗi không xác định');
+
+    err.style.display = 'block';
+  }finally{
+    button.disabled = false;
+    button.textContent = 'Xác nhận OTP và đăng nhập';
+  }
 });
 
-document.getElementById('logout-btn').addEventListener('click', ()=>{
-  currentUser = null;
-  selectedRole = null;
-  document.querySelectorAll('.role-card').forEach(c=>c.classList.remove('selected'));
-  document.getElementById('login-name').value='';
-  document.getElementById('app').classList.add('hidden');
-  document.getElementById('login-screen').classList.remove('hidden');
+document.getElementById('logout-btn').addEventListener('click', async ()=>{
+  const button = document.getElementById('logout-btn');
+
+  button.disabled = true;
+  button.textContent = 'Đang đăng xuất...';
+
+  try{
+    const { error } =
+      await window.supabaseClient.auth.signOut();
+
+    if(error) throw error;
+
+    currentUser = null;
+    selectedRole = null;
+    pendingLogin = null;
+
+    document.querySelectorAll('.role-card').forEach(card=>{
+      card.classList.remove('selected');
+    });
+
+    document.getElementById('login-name').value = '';
+    document.getElementById('login-email').value = '';
+    document.getElementById('login-otp').value = '';
+
+    document.getElementById('otp-section')
+      .classList.add('hidden');
+
+    document.getElementById('login-error').style.display = 'none';
+    document.getElementById('login-status').style.display = 'none';
+
+    document.getElementById('app').classList.add('hidden');
+    document.getElementById('login-screen').classList.remove('hidden');
+  }catch(error){
+    console.error('Lỗi đăng xuất:', error);
+
+    alert(
+      'Không thể đăng xuất: ' +
+      (error.message || 'Lỗi không xác định')
+    );
+  }finally{
+    button.disabled = false;
+    button.textContent = 'Đăng xuất';
+  }
 });
 
 function enterApp(){
@@ -1626,6 +1884,51 @@ document.getElementById('price-publish-btn').addEventListener('click', ()=>{
   toast.style.display = 'block';
   renderPricing();
 });
+async function restoreLoginSession() {
+  try {
+    if (!window.supabaseClient) return;
+
+    const {
+      data: { session },
+      error: sessionError
+    } = await window.supabaseClient.auth.getSession();
+
+    if (sessionError) throw sessionError;
+    if (!session?.user) return;
+
+    const { data: profile, error: profileError } =
+      await window.supabaseClient
+        .from('profiles')
+        .select('full_name, role, account_status')
+        .eq('id', session.user.id)
+        .maybeSingle();
+
+    if (profileError) throw profileError;
+
+    if (!profile || profile.account_status === 'blocked') {
+      await window.supabaseClient.auth.signOut();
+      return;
+    }
+
+    const interfaceRole = UI_ROLE_BY_DB[profile.role];
+
+    if (!interfaceRole) {
+      await window.supabaseClient.auth.signOut();
+      return;
+    }
+
+    currentUser = {
+      role: interfaceRole,
+      name: profile.full_name
+    };
+
+    enterApp();
+  } catch (error) {
+    console.error('Lỗi khôi phục phiên đăng nhập:', error);
+  }
+}
+
+window.addEventListener('load', restoreLoginSession);
 </script>
 <script type="module" src="/src/supabase.js"></script>
 </body>
