@@ -585,7 +585,7 @@
         <div style="overflow-x:auto;">
           <table>
             <thead>
-              <tr><th>Đơn vị</th><th>Người liên hệ</th><th>Vùng trồng</th><th>Sản lượng</th><th>Vận chuyển</th><th>Loại cont</th><th>Container ước tính</th><th>Trạng thái</th></tr>
+              <tr><th>Đơn vị</th><th>Người liên hệ</th><th>Vùng trồng</th><th>Sản lượng</th><th>Vận chuyển</th><th>Loại cont</th><th>Container ước tính</th><th>Tài xế</th><th>Trạng thái</th></tr>
             </thead>
             <tbody id="booking-table-body"></tbody>
           </table>
@@ -774,6 +774,7 @@ const ROLES = {
 };
 
 let currentUser = null; // {id, role, name, fullName}
+let availableDrivers = [];
 
 /* ================= AUTHENTICATION ================= */
 let selectedRole = null;
@@ -1318,6 +1319,20 @@ async function loadBookingsFromSupabase() {
     if (!user) return;
     currentUser.id = user.id;
 
+    availableDrivers = [];
+    if (currentUser.role === 'carrier') {
+      const { data: driverRows, error: driverError } =
+        await window.supabaseClient
+          .from('profiles')
+          .select('id, full_name, phone, organization_name, driver_license_number, driver_license_class')
+          .eq('role', 'driver')
+          .eq('account_status', 'active')
+          .order('full_name');
+
+      if (driverError) throw driverError;
+      availableDrivers = driverRows || [];
+    }
+
     rejectedBookingIds = new Set();
 
     if (currentUser.role === 'carrier') {
@@ -1340,8 +1355,10 @@ async function loadBookingsFromSupabase() {
   .select('*')
   .order('created_at', { ascending: false });
 
-if (currentUser.role !== 'carrier') {
+if (currentUser.role === 'export') {
   query = query.eq('user_id', user.id);
+} else if (currentUser.role === 'driver') {
+  query = query.or('user_id.eq.' + user.id + ',driver_id.eq.' + user.id);
 }
 
 const { data, error } = await query;
@@ -1360,7 +1377,9 @@ const { data, error } = await query;
       containerType: String(row.container_type),
       route: row.route,
       status: row.status,
-      carrierId: row.carrier_id
+      carrierId: row.carrier_id,
+      driverId: row.driver_id,
+      driverName: row.driver_name
     })).filter(booking => {
       if (currentUser.role !== 'carrier') return true;
 
@@ -1377,6 +1396,7 @@ const { data, error } = await query;
     renderBookingTable();
     renderForecast();
     renderCalendar();
+    renderShipments();
   } catch (error) {
     console.error('Lỗi tải danh sách đăng ký:', error);
   }
@@ -1930,11 +1950,26 @@ const canAccept =
   isCarrier && b.id && b.status === 'pending';
 const canReject =
   isCarrier && b.id && b.status === 'pending';
-  const canConfirm =
+const canConfirm =
   isCarrier &&
   b.id &&
   b.status === 'matched' &&
   b.carrierId === currentUser.id;
+const canAssign =
+  isCarrier &&
+  b.id &&
+  ['matched', 'confirmed'].includes(b.status) &&
+  b.carrierId === currentUser.id;
+
+const driverCell = canAssign
+  ? `<select class="booking-driver-select" data-id="${b.id}" style="min-width:150px;padding:6px 8px;border:1px solid var(--line);border-radius:6px;background:#FCFAF4;">
+       <option value="">Chọn tài xế</option>
+       ${availableDrivers.map(driver => `
+         <option value="${driver.id}" ${b.driverId === driver.id ? 'selected' : ''}>
+           ${escapeHtml(driver.full_name || 'Tài xế')}
+         </option>`).join('')}
+     </select>`
+  : (b.driverName || '—');
 
     tr.innerHTML = `
       <td>${b.org}</td>
@@ -1951,6 +1986,7 @@ const canReject =
       <td>${shipText}</td>
       <td>${b.containerType ? containerLabel(b.containerType) : '—'}</td>
       <td class="mono">${Math.ceil(b.volume / TONS_PER_CONTAINER)}</td>
+      <td>${driverCell}</td>
       <td>
         <span class="pill pill-registered">
           ${bookingStatusLabel(b.status)}
@@ -2015,6 +2051,11 @@ const canReject =
 body.querySelectorAll('.booking-reject-btn').forEach(button => {
   button.addEventListener('click', async () => {
     await rejectBooking(button.dataset.id);
+  });
+});
+body.querySelectorAll('.booking-driver-select').forEach(select => {
+  select.addEventListener('change', async () => {
+    await assignDriver(select.dataset.id, select.value);
   });
 });
 body.querySelectorAll('.booking-confirm-btn').forEach(button => {
@@ -2113,6 +2154,53 @@ async function rejectBooking(bookingId) {
       'Không thể từ chối đăng ký: ' +
       (error.message || 'Lỗi không xác định')
     );
+  }
+}
+async function assignDriver(bookingId, driverId) {
+  if (!driverId) return;
+
+  const driver = availableDrivers.find(item => item.id === driverId);
+  if (!driver) return;
+
+  try {
+    const {
+      data: { user },
+      error: userError
+    } = await window.supabaseClient.auth.getUser();
+
+    if (userError) throw userError;
+    if (!user) throw new Error('Bạn chưa đăng nhập.');
+
+    const { error } = await window.supabaseClient
+      .from('bookings')
+      .update({
+        driver_id: driver.id,
+        driver_name: driver.full_name || 'Tài xế',
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', bookingId)
+      .eq('carrier_id', user.id)
+      .in('status', ['matched', 'confirmed']);
+
+    if (error) throw error;
+
+    const booking = bookings.find(
+      item => String(item.id) === String(bookingId)
+    );
+    if (booking) {
+      booking.driverId = driver.id;
+      booking.driverName = driver.full_name || 'Tài xế';
+    }
+
+    renderBookingTable();
+    alert('Đã phân công tài xế ' + (driver.full_name || 'thành công') + '.');
+  } catch (error) {
+    console.error('Lỗi phân công tài xế:', error);
+    alert(
+      'Không thể phân công tài xế: ' +
+      (error.message || 'Lỗi không xác định')
+    );
+    await loadBookingsFromSupabase();
   }
 }
 async function confirmBooking(bookingId) {
@@ -2379,6 +2467,41 @@ function renderShipments(){
 
   const wrap = document.getElementById('ship-list');
   wrap.innerHTML = '';
+
+  if (currentUser.role === 'driver') {
+    const assigned = bookings.filter(
+      booking => booking.driverId === currentUser.id
+    );
+
+    if (!assigned.length) {
+      wrap.innerHTML = '<div class="card"><h3>Chuyến được phân công</h3><p style="color:var(--muted);margin:0;">Chưa có booking nào được phân công cho tài khoản này.</p></div>';
+      return;
+    }
+
+    noteEl.textContent = 'Đang hiển thị các booking đã được phân công cho tài khoản tài xế này.';
+
+    wrap.innerHTML = `
+      <div class="card">
+        <h3>Chuyến được phân công (${assigned.length})</h3>
+        <div style="overflow-x:auto;">
+          <table>
+            <thead><tr><th>Doanh nghiệp</th><th>Tuyến</th><th>Ngày vận chuyển</th><th>Sản lượng</th><th>Trạng thái</th></tr></thead>
+            <tbody>
+              ${assigned.map(booking => `
+                <tr>
+                  <td>${escapeHtml(booking.org || '—')}</td>
+                  <td>${escapeHtml(booking.route || '—')}</td>
+                  <td>${escapeHtml(booking.date || '—')}</td>
+                  <td>${booking.volume || 0} tấn</td>
+                  <td><span class="pill pill-registered">${bookingStatusLabel(booking.status)}</span></td>
+                </tr>`).join('')}
+            </tbody>
+          </table>
+        </div>
+      </div>`;
+    return;
+  }
+
   list.forEach(s=>{
     const idx = shipments.indexOf(s);
     const card = document.createElement('div');
