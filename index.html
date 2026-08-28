@@ -1271,6 +1271,7 @@ document.querySelectorAll('.tab-btn').forEach(btn=>{
 const TONS_PER_CONTAINER = 9;
 
 let bookings = [];
+let rejectedBookingIds = new Set();
 
 /* ---------- Carrier directory (dùng để gợi ý sau khi đặt chỗ) ---------- */
 const carriers = [
@@ -1317,6 +1318,23 @@ async function loadBookingsFromSupabase() {
     if (!user) return;
     currentUser.id = user.id;
 
+    rejectedBookingIds = new Set();
+
+    if (currentUser.role === 'carrier') {
+      const { data: rejectedRows, error: rejectedError } =
+        await window.supabaseClient
+          .from('booking_responses')
+          .select('booking_id')
+          .eq('carrier_id', user.id)
+          .eq('decision', 'rejected');
+
+      if (rejectedError) throw rejectedError;
+
+      rejectedBookingIds = new Set(
+        (rejectedRows || []).map(row => String(row.booking_id))
+      );
+    }
+
   let query = window.supabaseClient
   .from('bookings')
   .select('*')
@@ -1343,7 +1361,18 @@ const { data, error } = await query;
       route: row.route,
       status: row.status,
       carrierId: row.carrier_id
-    }));
+    })).filter(booking => {
+      if (currentUser.role !== 'carrier') return true;
+
+      const isOpenForThisCarrier =
+        booking.status === 'pending' &&
+        !rejectedBookingIds.has(String(booking.id));
+
+      const isAcceptedByThisCarrier =
+        booking.carrierId === user.id;
+
+      return isOpenForThisCarrier || isAcceptedByThisCarrier;
+    });
 
     renderBookingTable();
     renderForecast();
@@ -1899,6 +1928,8 @@ const canCancel =
 
 const canAccept =
   isCarrier && b.id && b.status === 'pending';
+const canReject =
+  isCarrier && b.id && b.status === 'pending';
   const canConfirm =
   isCarrier &&
   b.id &&
@@ -1935,7 +1966,7 @@ const canAccept =
                Hủy đăng ký
              </button>`
           : ''}
-          ${canAccept
+  ${canAccept
   ? `<br>
      <button
        type="button"
@@ -1943,6 +1974,16 @@ const canAccept =
        data-id="${b.id}"
        style="margin-top:8px;border:0;background:none;color:#1F6B45;cursor:pointer;font-weight:600;">
        Tiếp nhận
+     </button>`
+  : ''}
+  ${canReject
+  ? `<br>
+     <button
+       type="button"
+       class="booking-reject-btn"
+       data-id="${b.id}"
+       style="margin-top:8px;border:0;background:none;color:#B4502E;cursor:pointer;font-weight:600;">
+       Từ chối
      </button>`
   : ''}
   ${canConfirm
@@ -1969,6 +2010,11 @@ const canAccept =
   body.querySelectorAll('.booking-accept-btn').forEach(button => {
   button.addEventListener('click', async () => {
     await acceptBooking(button.dataset.id);
+  });
+});
+body.querySelectorAll('.booking-reject-btn').forEach(button => {
+  button.addEventListener('click', async () => {
+    await rejectBooking(button.dataset.id);
   });
 });
 body.querySelectorAll('.booking-confirm-btn').forEach(button => {
@@ -2008,7 +2054,9 @@ async function acceptBooking(bookingId) {
 
     if (error) throw error;
 
-    const booking = bookings.find(item => item.id === bookingId);
+    const booking = bookings.find(
+      item => String(item.id) === String(bookingId)
+    );
 
     if (booking) {
       booking.status = 'matched';
@@ -2021,6 +2069,48 @@ async function acceptBooking(bookingId) {
 
     alert(
       'Không thể tiếp nhận đăng ký: ' +
+      (error.message || 'Lỗi không xác định')
+    );
+  }
+}
+async function rejectBooking(bookingId) {
+  const rejected = confirm(
+    'Bạn có chắc chắn muốn từ chối đăng ký này không? Đăng ký sẽ được ẩn khỏi danh sách của đơn vị bạn.'
+  );
+
+  if (!rejected) return;
+
+  try {
+    const {
+      data: { user },
+      error: userError
+    } = await window.supabaseClient.auth.getUser();
+
+    if (userError) throw userError;
+    if (!user) throw new Error('Bạn chưa đăng nhập.');
+
+    const { error } = await window.supabaseClient
+      .from('booking_responses')
+      .insert({
+        booking_id: String(bookingId),
+        carrier_id: user.id,
+        decision: 'rejected'
+      });
+
+    if (error) throw error;
+
+    rejectedBookingIds.add(String(bookingId));
+    bookings = bookings.filter(
+      booking => String(booking.id) !== String(bookingId)
+    );
+
+    renderBookingTable();
+    alert('Đã từ chối đăng ký. Các đơn vị vận tải khác vẫn có thể tiếp nhận.');
+  } catch (error) {
+    console.error('Lỗi từ chối đăng ký:', error);
+
+    alert(
+      'Không thể từ chối đăng ký: ' +
       (error.message || 'Lỗi không xác định')
     );
   }
