@@ -698,7 +698,7 @@
 const ROLES = {
   farmer:  {label:"Nông dân / HTX", badge:"ND", color:"#1F3A2E", tabs:["booking","forecast","carriers","ratings"]},
   export:  {label:"Doanh nghiệp xuất khẩu", badge:"DN", color:"#A87A28", tabs:["booking","forecast","tracking","pricing","carriers","ratings"]},
-  carrier: {label:"Đơn vị vận tải / kho lạnh", badge:"VT", color:"#2E6B82", tabs:["forecast","tracking","pricing","carriers","ratings"]},
+  carrier: {label:"Đơn vị vận tải / kho lạnh", badge:"VT", color:"#2E6B82", tabs:["booking","forecast","tracking","pricing","carriers","ratings"]},
 };
 
 let currentUser = null; // {role, name}
@@ -988,6 +988,19 @@ function enterApp(){
     orgField.value = '';
     orgField.disabled = false;
   }
+  const bookingFormCard =
+  document.getElementById('booking-form').closest('.card');
+
+const bookingListCard =
+  document.getElementById('booking-table-body').closest('.card');
+
+if (currentUser.role === 'carrier') {
+  bookingFormCard.classList.add('hidden');
+  bookingListCard.style.gridColumn = '1 / -1';
+} else {
+  bookingFormCard.classList.remove('hidden');
+  bookingListCard.style.gridColumn = '';
+}
 
   try{ renderBookingTable(); }catch(err){ console.error('renderBookingTable lỗi:', err); }
   try{ renderCalendar(); }catch(err){ console.error('renderCalendar lỗi:', err); }
@@ -1057,12 +1070,18 @@ async function loadBookingsFromSupabase() {
 
     if (userError) throw userError;
     if (!user) return;
+    currentUser.id = user.id;
 
-    const { data, error } = await window.supabaseClient
-      .from('bookings')
-      .select('*')
-      .eq('user_id', user.id)
-      .order('created_at', { ascending: false });
+  let query = window.supabaseClient
+  .from('bookings')
+  .select('*')
+  .order('created_at', { ascending: false });
+
+if (currentUser.role !== 'carrier') {
+  query = query.eq('user_id', user.id);
+}
+
+const { data, error } = await query;
 
     if (error) throw error;
 
@@ -1077,7 +1096,8 @@ async function loadBookingsFromSupabase() {
       date: row.transport_date,
       containerType: String(row.container_type),
       route: row.route,
-      status: row.status
+      status: row.status,
+      carrierId: row.carrier_id
     }));
 
     renderBookingTable();
@@ -1185,6 +1205,7 @@ bookings.push({
       'ft).';
 
     toastEl.style.display = 'block';
+    await loadBookingsFromSupabase();
 
     try {
   renderCarrierMatches(route, containerType, dateInfo.weekday);
@@ -1602,28 +1623,239 @@ document.getElementById('driver-table-body').addEventListener('click', e=>{
   renderDriverTable(mine);
 });
 
-function renderBookingTable(){
+function bookingStatusLabel(status) {
+  const labels = {
+    pending: 'Chờ tiếp nhận',
+    matched: 'Đã tiếp nhận',
+    confirmed: 'Đã xác nhận',
+    cancelled: 'Đã hủy'
+  };
+
+  return labels[status] || 'Chờ tiếp nhận';
+}
+
+function renderBookingTable() {
   const body = document.getElementById('booking-table-body');
   body.innerHTML = '';
-  bookings.slice().reverse().forEach(b=>{
+
+  bookings.slice().reverse().forEach(b => {
     const tr = document.createElement('tr');
     const info = dateInfoFromString(b.date);
+
     const shipText = info
-      ? info.formatted+' · Tuần '+info.week+' · '+weekdayLabel(info.weekday)
+      ? info.formatted + ' · Tuần ' + info.week + ' · ' +
+        weekdayLabel(info.weekday)
       : monthLabel(b.month);
+
+   const isCarrier = currentUser?.role === 'carrier';
+
+const canCancel =
+  !isCarrier && b.id && b.status === 'pending';
+
+const canAccept =
+  isCarrier && b.id && b.status === 'pending';
+  const canConfirm =
+  isCarrier &&
+  b.id &&
+  b.status === 'matched' &&
+  b.carrierId === currentUser.id;
+
     tr.innerHTML = `
       <td>${b.org}</td>
-      <td>${b.contact ? b.contact : '—'}${b.phone ? '<br><span class="mono" style="color:var(--muted);font-size:12px;">'+b.phone+'</span>' : ''}</td>
+      <td>
+        ${b.contact || '—'}
+        ${b.phone
+          ? '<br><span class="mono" style="color:var(--muted);font-size:12px;">' +
+            b.phone +
+            '</span>'
+          : ''}
+      </td>
       <td>${b.region}</td>
       <td class="mono">${b.volume} tấn</td>
       <td>${shipText}</td>
       <td>${b.containerType ? containerLabel(b.containerType) : '—'}</td>
-      <td class="mono">${Math.ceil(b.volume/TONS_PER_CONTAINER)}</td>
-      <td><span class="pill pill-registered">Đã đăng ký</span></td>
+      <td class="mono">${Math.ceil(b.volume / TONS_PER_CONTAINER)}</td>
+      <td>
+        <span class="pill pill-registered">
+          ${bookingStatusLabel(b.status)}
+        </span>
+
+        ${canCancel
+          ? `<br>
+             <button
+               type="button"
+               class="booking-cancel-btn"
+               data-id="${b.id}"
+               style="margin-top:8px;border:0;background:none;color:#B4502E;cursor:pointer;">
+               Hủy đăng ký
+             </button>`
+          : ''}
+          ${canAccept
+  ? `<br>
+     <button
+       type="button"
+       class="booking-accept-btn"
+       data-id="${b.id}"
+       style="margin-top:8px;border:0;background:none;color:#1F6B45;cursor:pointer;font-weight:600;">
+       Tiếp nhận
+     </button>`
+  : ''}
+  ${canConfirm
+  ? `<br>
+     <button
+       type="button"
+       class="booking-confirm-btn"
+       data-id="${b.id}"
+       style="margin-top:8px;border:0;background:none;color:#2E6B82;cursor:pointer;font-weight:600;">
+       Xác nhận vận chuyển
+     </button>`
+  : ''}
+      </td>
     `;
+
     body.appendChild(tr);
   });
-  document.getElementById('booking-count').textContent = '('+bookings.length+' đơn vị)';
+
+  body.querySelectorAll('.booking-cancel-btn').forEach(button => {
+    button.addEventListener('click', async () => {
+      await cancelBooking(button.dataset.id);
+    });
+  });
+  body.querySelectorAll('.booking-accept-btn').forEach(button => {
+  button.addEventListener('click', async () => {
+    await acceptBooking(button.dataset.id);
+  });
+});
+body.querySelectorAll('.booking-confirm-btn').forEach(button => {
+  button.addEventListener('click', async () => {
+    await confirmBooking(button.dataset.id);
+  });
+});
+
+  document.getElementById('booking-count').textContent =
+    '(' + bookings.length + ' đăng ký)';
+}
+async function acceptBooking(bookingId) {
+  const accepted = confirm(
+    'Bạn có chắc chắn muốn tiếp nhận đăng ký này không?'
+  );
+
+  if (!accepted) return;
+
+  try {
+    const {
+      data: { user },
+      error: userError
+    } = await window.supabaseClient.auth.getUser();
+
+    if (userError) throw userError;
+    if (!user) throw new Error('Bạn chưa đăng nhập.');
+
+    const { error } = await window.supabaseClient
+      .from('bookings')
+      .update({
+        status: 'matched',
+        carrier_id: user.id,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', bookingId)
+      .eq('status', 'pending');
+
+    if (error) throw error;
+
+    const booking = bookings.find(item => item.id === bookingId);
+
+    if (booking) {
+      booking.status = 'matched';
+      booking.carrierId = user.id;
+    }
+
+    renderBookingTable();
+  } catch (error) {
+    console.error('Lỗi tiếp nhận đăng ký:', error);
+
+    alert(
+      'Không thể tiếp nhận đăng ký: ' +
+      (error.message || 'Lỗi không xác định')
+    );
+  }
+}
+async function confirmBooking(bookingId) {
+  const accepted = confirm(
+    'Xác nhận đơn vị của bạn sẽ vận chuyển đăng ký này?'
+  );
+
+  if (!accepted) return;
+
+  try {
+    const {
+      data: { user },
+      error: userError
+    } = await window.supabaseClient.auth.getUser();
+
+    if (userError) throw userError;
+    if (!user) throw new Error('Bạn chưa đăng nhập.');
+
+    const { error } = await window.supabaseClient
+      .from('bookings')
+      .update({
+        status: 'confirmed',
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', bookingId)
+      .eq('carrier_id', user.id)
+      .eq('status', 'matched');
+
+    if (error) throw error;
+
+    await loadBookingsFromSupabase();
+
+    alert('Đã xác nhận vận chuyển thành công.');
+  } catch (error) {
+    console.error('Lỗi xác nhận vận chuyển:', error);
+
+    alert(
+      'Không thể xác nhận vận chuyển: ' +
+      (error.message || 'Lỗi không xác định')
+    );
+  }
+}
+async function cancelBooking(bookingId) {
+  const accepted = confirm(
+    'Bạn có chắc chắn muốn hủy đăng ký này không?'
+  );
+
+  if (!accepted) return;
+
+  try {
+    const { error } = await window.supabaseClient
+      .from('bookings')
+      .update({
+        status: 'cancelled',
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', bookingId)
+      .eq('status', 'pending');
+
+    if (error) throw error;
+
+    const booking = bookings.find(item => item.id === bookingId);
+
+    if (booking) {
+      booking.status = 'cancelled';
+    }
+
+    renderBookingTable();
+    renderForecast();
+    renderCalendar();
+  } catch (error) {
+    console.error('Lỗi hủy đăng ký:', error);
+
+    alert(
+      'Không thể hủy đăng ký: ' +
+      (error.message || 'Lỗi không xác định')
+    );
+  }
 }
 
 /* ---------- Lịch giữ chỗ theo ngày (kết hợp từ mô hình DurianLink) ---------- */
