@@ -58,20 +58,33 @@
   .role-card.selected{border-color:var(--forest);background:#EDF2EC;}
   .role-badge{width:32px;height:32px;border-radius:9px;display:flex;align-items:center;justify-content:center;
     font-family:'IBM Plex Mono',monospace;font-weight:600;font-size:12px;color:#fff;margin-bottom:10px;}
-  .role-card[data-role="farmer"] .role-badge{background:var(--forest);}
   .role-card[data-role="export"] .role-badge{background:var(--gold-dark);}
   .role-card[data-role="carrier"] .role-badge{background:var(--frost-dark);}
+  .role-card[data-role="driver"] .role-badge{background:var(--forest);}
   .role-card .r-title{font-weight:600;font-size:14px;color:var(--charcoal);}
   .role-card .r-desc{font-size:12px;color:var(--muted);margin-top:4px;line-height:1.4;}
 
+  .auth-switch{display:grid;grid-template-columns:1fr 1fr;gap:6px;padding:5px;background:#EDE8D8;border-radius:12px;margin:22px 0;}
+  .auth-switch button{border:0;border-radius:8px;padding:10px 12px;background:transparent;color:var(--muted);font:600 13px 'Inter',sans-serif;cursor:pointer;}
+  .auth-switch button.active{background:var(--card);color:var(--forest);box-shadow:0 2px 8px rgba(31,58,46,.1);}
+  .auth-panel h2{font-size:22px;margin-top:0;}
+  .auth-panel .sub{margin-bottom:20px;}
+  .auth-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+  .auth-grid .field-full{grid-column:1 / -1;}
+  @media (max-width:560px){.auth-grid{grid-template-columns:1fr;}.auth-grid .field-full{grid-column:auto;}}
+  .role-specific-fields{margin-top:16px;padding-top:16px;border-top:1px solid var(--line);}
   .login-card label{display:block;font-size:13px;font-weight:600;color:var(--forest);margin:0 0 6px;}
-  .login-card input{
+  .login-card input,.login-card select{
     width:100%;padding:11px 13px;border:1px solid var(--line);border-radius:8px;font-family:'Inter',sans-serif;
     font-size:14px;background:#FCFAF4;color:var(--charcoal);
   }
-  .login-card input:focus{outline:2px solid var(--frost);outline-offset:1px;border-color:var(--frost);}
+  .login-card input:focus,.login-card select:focus{outline:2px solid var(--frost);outline-offset:1px;border-color:var(--frost);}
   .login-error{color:var(--rust);font-size:12.5px;margin-top:8px;display:none;}
   .login-card .btn{width:100%;margin-top:18px;justify-content:center;}
+  .otp-panel{margin-top:18px;padding:18px;background:#FCFAF4;border:1px solid var(--line);border-radius:12px;}
+  .otp-inputs{display:grid;grid-template-columns:repeat(8,1fr);gap:7px;margin-top:10px;}
+  .login-card .otp-digit{padding:10px 2px;text-align:center;font:600 20px 'IBM Plex Mono',monospace;}
+  .auth-hint{font-size:12px;color:var(--muted);margin-top:10px;}
 
   /* ---------- App shell ---------- */
   .topbar{background:var(--forest);color:#F2EFE3;padding:0 28px;position:sticky;top:0;z-index:50;}
@@ -305,71 +318,130 @@
         <div style="font-size:12px;color:var(--muted);">Nền tảng kết nối vận chuyển lạnh sầu riêng Đắk Lắk</div>
       </div>
     </div>
-    <h2>Chọn vai trò để vào hệ thống</h2>
-    <p class="sub">Bản demo minh họa cách nền tảng phục vụ ba nhóm người dùng khác nhau — mỗi vai trò thấy các chức năng phù hợp với nhu cầu của mình.</p>
-
-    <div class="role-grid" id="role-grid">
-      <button type="button" class="role-card" data-role="farmer">
-        <div class="role-badge">ND</div>
-        <div class="r-title">Nông dân / HTX</div>
-        <div class="r-desc">Đăng ký sản lượng, đặt chỗ container trước mùa vụ</div>
-      </button>
-      <button type="button" class="role-card" data-role="export">
-        <div class="role-badge">DN</div>
-        <div class="r-title">Doanh nghiệp xuất khẩu</div>
-        <div class="r-desc">Đặt chỗ, theo dõi đơn hàng, xem giá cước</div>
-      </button>
-      <button type="button" class="role-card" data-role="carrier">
-        <div class="role-badge">VT</div>
-        <div class="r-title">Đơn vị vận tải / kho lạnh</div>
-        <div class="r-desc">Xem dự báo nhu cầu, cập nhật vận chuyển &amp; giá cước</div>
-      </button>
+    <div class="auth-switch" aria-label="Chọn hình thức xác thực">
+      <button type="button" id="show-login" class="active">Đăng nhập</button>
+      <button type="button" id="show-register">Đăng ký tài khoản</button>
     </div>
 
-    <label for="login-name">Tên đơn vị / cá nhân</label>
-<input
-  id="login-name"
-  type="text"
-  placeholder="VD: HTX Nông sản Krông Pắc"
-  autocomplete="organization"
->
+    <section id="login-panel" class="auth-panel">
+      <h2>Đăng nhập</h2>
+      <p class="sub">Nhập email và mật khẩu. Vai trò được lấy tự động từ tài khoản đã đăng ký.</p>
 
-<label for="login-email" style="margin-top:14px;">Email</label>
-<input
-  id="login-email"
-  type="email"
-  placeholder="VD: tenban@gmail.com"
-  autocomplete="email"
->
+      <div class="auth-grid">
+        <div class="field-full">
+          <label for="login-email">Email</label>
+          <input id="login-email" type="email" placeholder="VD: tenban@gmail.com" autocomplete="email">
+        </div>
+        <div class="field-full">
+          <label for="login-password">Mật khẩu</label>
+          <input id="login-password" type="password" placeholder="Nhập mật khẩu" autocomplete="current-password">
+        </div>
+      </div>
 
-<div class="login-error" id="login-error">
-  Vui lòng nhập đầy đủ thông tin.
-</div>
+      <div class="login-error" id="login-error"></div>
+      <div id="login-status" style="display:none;margin-top:10px;color:var(--forest);font-size:13px;"></div>
+      <button class="btn" id="login-submit" type="button">Đăng nhập</button>
+    </section>
 
-<div
-  id="login-status"
-  style="display:none; margin-top:10px; color:var(--forest); font-size:13px;"
-></div>
+    <section id="register-panel" class="auth-panel hidden">
+      <h2>Đăng ký tài khoản</h2>
+      <p class="sub">Chọn đúng vai trò. Sau khi xác thực email, vai trò sẽ được lưu cố định trong hệ thống.</p>
 
-<button class="btn" id="login-submit" type="button">
-  Gửi mã OTP
-</button>
+      <div class="role-grid" id="role-grid">
+        <button type="button" class="role-card" data-role="export">
+          <div class="role-badge">DN</div>
+          <div class="r-title">Doanh nghiệp xuất khẩu</div>
+          <div class="r-desc">Tạo nhu cầu, lựa chọn vận tải và theo dõi chuyến</div>
+        </button>
+        <button type="button" class="role-card" data-role="carrier">
+          <div class="role-badge">VT</div>
+          <div class="r-title">Đơn vị vận tải</div>
+          <div class="r-desc">Tiếp nhận nhu cầu, quản lý xe và phân công tài xế</div>
+        </button>
+        <button type="button" class="role-card" data-role="driver">
+          <div class="role-badge">TX</div>
+          <div class="r-title">Tài xế</div>
+          <div class="r-desc">Xem chuyến được giao và cập nhật hành trình</div>
+        </button>
+      </div>
 
-<div id="otp-section" class="hidden" style="margin-top:18px;">
-  <label for="login-otp">Mã OTP trong email</label>
-  <input
-    id="login-otp"
-    type="text"
-    inputmode="numeric"
-    maxlength="8"
-    autocomplete="one-time-code"
-    placeholder="Nhập mã OTP"
-  >
+      <div class="auth-grid">
+        <div>
+          <label for="register-full-name">Họ và tên</label>
+          <input id="register-full-name" type="text" placeholder="VD: Nguyễn Văn An" autocomplete="name">
+        </div>
+        <div>
+          <label for="register-phone">Số điện thoại</label>
+          <input id="register-phone" type="tel" placeholder="VD: 0905 123 456" autocomplete="tel">
+        </div>
+        <div class="field-full">
+          <label for="register-email">Email</label>
+          <input id="register-email" type="email" placeholder="VD: tenban@gmail.com" autocomplete="email">
+        </div>
+        <div>
+          <label for="register-password">Mật khẩu</label>
+          <input id="register-password" type="password" placeholder="Tối thiểu 8 ký tự" autocomplete="new-password">
+        </div>
+        <div>
+          <label for="register-password-confirm">Nhập lại mật khẩu</label>
+          <input id="register-password-confirm" type="password" placeholder="Nhập lại mật khẩu" autocomplete="new-password">
+        </div>
+      </div>
 
-  <button class="btn" id="otp-submit" type="button">
-    Xác nhận OTP và đăng nhập
-  </button>
-</div>
+      <div id="business-fields" class="role-specific-fields hidden">
+        <div class="auth-grid">
+          <div class="field-full">
+            <label for="register-organization">Tên doanh nghiệp</label>
+            <input id="register-organization" type="text" placeholder="VD: Công ty Xuất khẩu Tây Nguyên" autocomplete="organization">
+          </div>
+          <div>
+            <label for="register-tax-code">Mã số thuế</label>
+            <input id="register-tax-code" type="text" placeholder="Nhập mã số thuế">
+          </div>
+          <div>
+            <label for="register-address">Địa chỉ</label>
+            <input id="register-address" type="text" placeholder="Nhập địa chỉ doanh nghiệp" autocomplete="street-address">
+          </div>
+        </div>
+      </div>
+
+      <div id="driver-fields" class="role-specific-fields hidden">
+        <div class="auth-grid">
+          <div class="field-full">
+            <label for="register-driver-company">Đơn vị vận tải đang công tác</label>
+            <input id="register-driver-company" type="text" placeholder="VD: Công ty Vận tải Tây Nguyên">
+          </div>
+          <div>
+            <label for="register-license-number">Số giấy phép lái xe</label>
+            <input id="register-license-number" type="text" placeholder="Nhập số giấy phép">
+          </div>
+          <div>
+            <label for="register-license-class">Hạng giấy phép lái xe</label>
+            <input id="register-license-class" type="text" placeholder="VD: C">
+          </div>
+        </div>
+      </div>
+
+      <div class="login-error" id="register-error"></div>
+      <div id="register-status" style="display:none;margin-top:10px;color:var(--forest);font-size:13px;"></div>
+      <button class="btn" id="register-submit" type="button">Gửi mã xác thực</button>
+
+      <div id="register-otp-section" class="otp-panel hidden">
+        <label>Mã xác thực gồm 8 số</label>
+        <div class="otp-inputs" id="register-otp-inputs">
+          <input class="otp-digit" inputmode="numeric" maxlength="1" autocomplete="one-time-code" aria-label="Số OTP 1">
+          <input class="otp-digit" inputmode="numeric" maxlength="1" aria-label="Số OTP 2">
+          <input class="otp-digit" inputmode="numeric" maxlength="1" aria-label="Số OTP 3">
+          <input class="otp-digit" inputmode="numeric" maxlength="1" aria-label="Số OTP 4">
+          <input class="otp-digit" inputmode="numeric" maxlength="1" aria-label="Số OTP 5">
+          <input class="otp-digit" inputmode="numeric" maxlength="1" aria-label="Số OTP 6">
+          <input class="otp-digit" inputmode="numeric" maxlength="1" aria-label="Số OTP 7">
+          <input class="otp-digit" inputmode="numeric" maxlength="1" aria-label="Số OTP 8">
+        </div>
+        <p class="auth-hint">Bạn có thể dán toàn bộ mã; hệ thống sẽ tự chia vào từng ô.</p>
+        <button class="btn" id="register-otp-submit" type="button">Xác thực và hoàn tất đăng ký</button>
+      </div>
+    </section>
   </div>
 </div>
 
@@ -436,8 +508,8 @@
       <div class="card">
         <h3>Form đăng ký</h3>
         <form id="booking-form">
-          <label for="f-org">Tên đơn vị (doanh nghiệp / HTX)</label>
-          <input id="f-org" type="text" placeholder="VD: HTX Nông sản Krông Pắc">
+          <label for="f-org">Tên doanh nghiệp xuất khẩu</label>
+          <input id="f-org" type="text" placeholder="VD: Công ty Xuất khẩu Tây Nguyên">
 
           <div class="row2">
             <div>
@@ -615,7 +687,7 @@
       <p id="carriers-desc">Xem năng lực đội xe lạnh, liên hệ trực tiếp, chat tư vấn giá và chốt hợp đồng ngay trên nền tảng.</p>
     </div>
 
-    <!-- Dành cho Nông dân/HTX & Doanh nghiệp xuất khẩu: danh bạ đơn vị vận tải -->
+    <!-- Dành cho Doanh nghiệp xuất khẩu: danh bạ đơn vị vận tải -->
     <div id="carrier-directory"></div>
 
     <!-- Dành cho Đơn vị vận tải: bảng quản lý hồ sơ của chính họ -->
@@ -696,28 +768,143 @@
 <script>
 /* ================= ROLE CONFIG ================= */
 const ROLES = {
-  farmer:  {label:"Nông dân / HTX", badge:"ND", color:"#1F3A2E", tabs:["booking","forecast","carriers","ratings"]},
   export:  {label:"Doanh nghiệp xuất khẩu", badge:"DN", color:"#A87A28", tabs:["booking","forecast","tracking","pricing","carriers","ratings"]},
-  carrier: {label:"Đơn vị vận tải / kho lạnh", badge:"VT", color:"#2E6B82", tabs:["booking","forecast","tracking","pricing","carriers","ratings"]},
+  carrier: {label:"Đơn vị vận tải", badge:"VT", color:"#2E6B82", tabs:["booking","forecast","tracking","pricing","carriers","ratings"]},
+  driver:  {label:"Tài xế", badge:"TX", color:"#1F3A2E", tabs:["tracking"]},
 };
 
-let currentUser = null; // {role, name}
+let currentUser = null; // {id, role, name, fullName}
 
-/* ================= LOGIN SCREEN LOGIC ================= */
+/* ================= AUTHENTICATION ================= */
 let selectedRole = null;
+let pendingRegistration = null;
+
+const DB_ROLE_BY_UI = {
+  export: 'exporter',
+  carrier: 'carrier',
+  driver: 'driver'
+};
+
+const UI_ROLE_BY_DB = {
+  exporter: 'export',
+  carrier: 'carrier',
+  driver: 'driver'
+};
+
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const AUTH_PHONE_REGEX = /^(0|\+84)[0-9\s]{9,10}$/;
+
+function showAuthPanel(mode){
+  const isLogin = mode === 'login';
+  document.getElementById('login-panel').classList.toggle('hidden', !isLogin);
+  document.getElementById('register-panel').classList.toggle('hidden', isLogin);
+  document.getElementById('show-login').classList.toggle('active', isLogin);
+  document.getElementById('show-register').classList.toggle('active', !isLogin);
+}
+
+document.getElementById('show-login').addEventListener('click', ()=>showAuthPanel('login'));
+document.getElementById('show-register').addEventListener('click', ()=>showAuthPanel('register'));
+
 document.querySelectorAll('.role-card').forEach(card=>{
   card.addEventListener('click',()=>{
     document.querySelectorAll('.role-card').forEach(c=>c.classList.remove('selected'));
     card.classList.add('selected');
     selectedRole = card.dataset.role;
+
+    const isDriver = selectedRole === 'driver';
+    document.getElementById('business-fields').classList.toggle('hidden', isDriver);
+    document.getElementById('driver-fields').classList.toggle('hidden', !isDriver);
   });
 });
 
-let pendingLogin = null;
+function setAuthMessage(errorId, statusId, message, isError){
+  const errorElement = document.getElementById(errorId);
+  const statusElement = document.getElementById(statusId);
+  errorElement.style.display = 'none';
+  statusElement.style.display = 'none';
+
+  if(!message) return;
+
+  if(isError){
+    errorElement.textContent = message;
+    errorElement.style.display = 'block';
+  }else{
+    statusElement.textContent = message;
+    statusElement.style.display = 'block';
+  }
+}
+
+async function getOrCreateProfile(user){
+  const profileColumns = 'full_name, organization_name, phone, role, account_status, tax_code, address, driver_license_number, driver_license_class';
+  const { data: existingProfile, error: readError } = await window.supabaseClient
+    .from('profiles')
+    .select(profileColumns)
+    .eq('id', user.id)
+    .maybeSingle();
+
+  if(readError) throw readError;
+  if(existingProfile) return existingProfile;
+
+  const metadata = user.user_metadata || {};
+  if(!metadata.role || !metadata.full_name){
+    throw new Error('Tài khoản chưa có hồ sơ. Hãy đăng ký tài khoản mới.');
+  }
+
+  const { error: createError } = await window.supabaseClient
+    .from('profiles')
+    .insert({
+      id: user.id,
+      full_name: metadata.full_name,
+      organization_name: metadata.organization_name || metadata.full_name,
+      phone: metadata.phone || null,
+      role: metadata.role,
+      tax_code: metadata.tax_code || null,
+      address: metadata.address || null,
+      driver_license_number: metadata.driver_license_number || null,
+      driver_license_class: metadata.driver_license_class || null
+    });
+
+  if(createError) throw createError;
+
+  const { data: createdProfile, error: rereadError } = await window.supabaseClient
+    .from('profiles')
+    .select(profileColumns)
+    .eq('id', user.id)
+    .single();
+
+  if(rereadError) throw rereadError;
+  return createdProfile;
+}
+
+async function enterWithAuthenticatedUser(user){
+  const profile = await getOrCreateProfile(user);
+
+  if(profile.account_status === 'blocked'){
+    await window.supabaseClient.auth.signOut();
+    throw new Error('Tài khoản này đã bị khóa.');
+  }
+
+  const interfaceRole = UI_ROLE_BY_DB[profile.role];
+  if(!interfaceRole || !ROLES[interfaceRole]){
+    await window.supabaseClient.auth.signOut();
+    throw new Error('Vai trò tài khoản không hợp lệ.');
+  }
+
+  currentUser = {
+    id: user.id,
+    role: interfaceRole,
+    name: interfaceRole === 'driver'
+      ? profile.full_name
+      : (profile.organization_name || profile.full_name),
+    fullName: profile.full_name
+  };
+
+  enterApp();
+}
 
 document.getElementById('login-submit').addEventListener('click', async ()=>{
-  const name = document.getElementById('login-name').value.trim();
   const email = document.getElementById('login-email').value.trim();
+  const password = document.getElementById('login-password').value;
   const err = document.getElementById('login-error');
   const status = document.getElementById('login-status');
   const button = document.getElementById('login-submit');
@@ -725,16 +912,8 @@ document.getElementById('login-submit').addEventListener('click', async ()=>{
   err.style.display = 'none';
   status.style.display = 'none';
 
-  if(!selectedRole || !name || !email){
-    err.textContent = 'Vui lòng chọn vai trò, nhập tên và email.';
-    err.style.display = 'block';
-    return;
-  }
-
-  const emailHopLe = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
-  if(!emailHopLe.test(email)){
-    err.textContent = 'Địa chỉ email không hợp lệ.';
+  if(!EMAIL_REGEX.test(email) || !password){
+    err.textContent = 'Vui lòng nhập email hợp lệ và mật khẩu.';
     err.style.display = 'block';
     return;
   }
@@ -746,155 +925,20 @@ document.getElementById('login-submit').addEventListener('click', async ()=>{
   }
 
   button.disabled = true;
-  button.textContent = 'Đang gửi mã...';
+  button.textContent = 'Đang đăng nhập...';
 
   try{
-    const { error } =
-      await window.supabaseClient.auth.signInWithOtp({
-        email,
-        options: {
-          shouldCreateUser: true
-        }
-      });
-
-    if(error) throw error;
-
-    pendingLogin = {
-      name,
+    const { data, error } = await window.supabaseClient.auth.signInWithPassword({
       email,
-      role: selectedRole
-    };
-
-    document.getElementById('otp-section')
-      .classList.remove('hidden');
-
-    status.textContent =
-      'Mã OTP đã được gửi. Hãy kiểm tra email và thư rác.';
-    status.style.display = 'block';
-
-    document.getElementById('login-otp').focus();
-  }catch(error){
-    console.error('Lỗi gửi OTP:', error);
-
-    err.textContent =
-      'Không thể gửi OTP: ' +
-      (error.message || 'Lỗi không xác định');
-
-    err.style.display = 'block';
-  }finally{
-    button.disabled = false;
-    button.textContent = 'Gửi lại mã OTP';
-  }
-});
-const DB_ROLE_BY_UI = {
-  farmer: 'farmer',
-  export: 'exporter',
-  carrier: 'carrier'
-};
-
-const UI_ROLE_BY_DB = {
-  farmer: 'farmer',
-  exporter: 'export',
-  carrier: 'carrier'
-};
-
-document.getElementById('otp-submit').addEventListener('click', async ()=>{
-  const otpInput = document.getElementById('login-otp');
-  const token = otpInput.value.replace(/\D/g, '');
-  const err = document.getElementById('login-error');
-  const status = document.getElementById('login-status');
-  const button = document.getElementById('otp-submit');
-
-  err.style.display = 'none';
-
-  if(!pendingLogin){
-    err.textContent = 'Hãy yêu cầu gửi mã OTP trước.';
-    err.style.display = 'block';
-    return;
-  }
-
-  if(!/^\d{8}$/.test(token)){
-    err.textContent = 'Mã OTP phải gồm đúng 8 chữ số.';
-    err.style.display = 'block';
-    return;
-  }
-
-  button.disabled = true;
-  button.textContent = 'Đang xác nhận...';
-
-  try{
-    const { data, error } =
-      await window.supabaseClient.auth.verifyOtp({
-        email: pendingLogin.email,
-        token,
-        type: 'email'
-      });
+      password
+    });
 
     if(error) throw error;
+    if(!data.user) throw new Error('Không tìm thấy tài khoản.');
 
-    if(!data.user){
-      throw new Error('Không tìm thấy thông tin người dùng.');
-    }
-
-    const user = data.user;
-
-    const {
-      data: existingProfile,
-      error: profileError
-    } = await window.supabaseClient
-      .from('profiles')
-      .select('full_name, role, account_status')
-      .eq('id', user.id)
-      .maybeSingle();
-
-    if(profileError) throw profileError;
-
-    let profile = existingProfile;
-
-    if(!profile){
-      const databaseRole = DB_ROLE_BY_UI[pendingLogin.role];
-
-      const {
-        data: newProfile,
-        error: createError
-      } = await window.supabaseClient
-        .from('profiles')
-        .insert({
-          id: user.id,
-          full_name: pendingLogin.name,
-          organization_name: pendingLogin.name,
-          role: databaseRole
-        })
-        .select('full_name, role, account_status')
-        .single();
-
-      if(createError) throw createError;
-
-      profile = newProfile;
-    }
-
-    if(profile.account_status === 'blocked'){
-      await window.supabaseClient.auth.signOut();
-      throw new Error('Tài khoản này đã bị khóa.');
-    }
-
-    const interfaceRole = UI_ROLE_BY_DB[profile.role];
-
-    if(!interfaceRole){
-      throw new Error('Vai trò người dùng không hợp lệ.');
-    }
-
-    currentUser = {
-      role: interfaceRole,
-      name: profile.full_name
-    };
-
-    status.style.display = 'none';
-    err.style.display = 'none';
-
-    enterApp();
+    await enterWithAuthenticatedUser(data.user);
   }catch(error){
-    console.error('Lỗi xác nhận OTP:', error);
+    console.error('Lỗi đăng nhập:', error);
 
     err.textContent =
       'Không thể đăng nhập: ' +
@@ -903,7 +947,207 @@ document.getElementById('otp-submit').addEventListener('click', async ()=>{
     err.style.display = 'block';
   }finally{
     button.disabled = false;
-    button.textContent = 'Xác nhận OTP và đăng nhập';
+    button.textContent = 'Đăng nhập';
+  }
+});
+
+function readRegistrationPayload(){
+  const fullName = document.getElementById('register-full-name').value.trim();
+  const phone = document.getElementById('register-phone').value.trim();
+  const email = document.getElementById('register-email').value.trim();
+  const password = document.getElementById('register-password').value;
+  const passwordConfirm = document.getElementById('register-password-confirm').value;
+  const isDriver = selectedRole === 'driver';
+  const organizationName = isDriver
+    ? document.getElementById('register-driver-company').value.trim()
+    : document.getElementById('register-organization').value.trim();
+
+  return {
+    fullName,
+    phone,
+    email,
+    password,
+    passwordConfirm,
+    role: DB_ROLE_BY_UI[selectedRole],
+    organizationName,
+    taxCode: isDriver ? '' : document.getElementById('register-tax-code').value.trim(),
+    address: isDriver ? '' : document.getElementById('register-address').value.trim(),
+    driverLicenseNumber: isDriver ? document.getElementById('register-license-number').value.trim() : '',
+    driverLicenseClass: isDriver ? document.getElementById('register-license-class').value.trim() : ''
+  };
+}
+
+function validateRegistration(payload){
+  if(!selectedRole) return 'Vui lòng chọn vai trò đăng ký.';
+  if(!payload.fullName || !AUTH_PHONE_REGEX.test(payload.phone)) return 'Vui lòng nhập họ tên và số điện thoại hợp lệ.';
+  if(!EMAIL_REGEX.test(payload.email)) return 'Địa chỉ email không hợp lệ.';
+  if(payload.password.length < 8) return 'Mật khẩu phải có ít nhất 8 ký tự.';
+  if(payload.password !== payload.passwordConfirm) return 'Mật khẩu nhập lại không khớp.';
+  if(!payload.organizationName) return selectedRole === 'driver' ? 'Vui lòng nhập đơn vị vận tải đang công tác.' : 'Vui lòng nhập tên doanh nghiệp.';
+
+  if(selectedRole === 'driver' && (!payload.driverLicenseNumber || !payload.driverLicenseClass)){
+    return 'Vui lòng nhập đầy đủ số và hạng giấy phép lái xe.';
+  }
+
+  if(selectedRole !== 'driver' && (!payload.taxCode || !payload.address)){
+    return 'Vui lòng nhập mã số thuế và địa chỉ doanh nghiệp.';
+  }
+
+  return '';
+}
+
+document.getElementById('register-submit').addEventListener('click', async ()=>{
+  const button = document.getElementById('register-submit');
+  const payload = readRegistrationPayload();
+  const validationError = validateRegistration(payload);
+
+  setAuthMessage('register-error', 'register-status', '', false);
+
+  if(validationError){
+    setAuthMessage('register-error', 'register-status', validationError, true);
+    return;
+  }
+
+  button.disabled = true;
+  button.textContent = 'Đang gửi mã...';
+
+  try{
+    if(pendingRegistration?.email === payload.email){
+      const { error: resendError } = await window.supabaseClient.auth.resend({
+        type: 'signup',
+        email: payload.email
+      });
+
+      if(resendError) throw resendError;
+    }else{
+      const { data, error } = await window.supabaseClient.auth.signUp({
+        email: payload.email,
+        password: payload.password,
+        options: {
+          data: {
+            full_name: payload.fullName,
+            phone: payload.phone,
+            role: payload.role,
+            organization_name: payload.organizationName,
+            tax_code: payload.taxCode,
+            address: payload.address,
+            driver_license_number: payload.driverLicenseNumber,
+            driver_license_class: payload.driverLicenseClass
+          }
+        }
+      });
+
+      if(error) throw error;
+      if(!data.user) throw new Error('Không thể tạo yêu cầu đăng ký.');
+    }
+
+    pendingRegistration = payload;
+    document.getElementById('register-otp-section').classList.remove('hidden');
+    clearOtpDigits();
+    document.querySelector('.otp-digit').focus();
+    setAuthMessage(
+      'register-error',
+      'register-status',
+      'Mã xác thực đã được gửi. Hãy kiểm tra email và thư rác.',
+      false
+    );
+  }catch(error){
+    console.error('Lỗi đăng ký:', error);
+    setAuthMessage(
+      'register-error',
+      'register-status',
+      'Không thể đăng ký: ' + (error.message || 'Lỗi không xác định'),
+      true
+    );
+  }finally{
+    button.disabled = false;
+    button.textContent = 'Gửi lại mã xác thực';
+  }
+});
+
+const otpDigits = Array.from(document.querySelectorAll('.otp-digit'));
+
+function clearOtpDigits(){
+  otpDigits.forEach(input=>{ input.value = ''; });
+}
+
+function fillOtpDigits(value){
+  const digits = String(value).replace(/\D/g, '').slice(0, 8).split('');
+  otpDigits.forEach((input, index)=>{ input.value = digits[index] || ''; });
+  const nextIndex = Math.min(digits.length, otpDigits.length - 1);
+  otpDigits[nextIndex]?.focus();
+}
+
+otpDigits.forEach((input, index)=>{
+  input.addEventListener('input', ()=>{
+    input.value = input.value.replace(/\D/g, '').slice(-1);
+    if(input.value && index < otpDigits.length - 1) otpDigits[index + 1].focus();
+  });
+
+  input.addEventListener('keydown', event=>{
+    if(event.key === 'Backspace' && !input.value && index > 0) otpDigits[index - 1].focus();
+  });
+
+  input.addEventListener('paste', event=>{
+    event.preventDefault();
+    fillOtpDigits(event.clipboardData.getData('text'));
+  });
+});
+
+document.getElementById('register-otp-submit').addEventListener('click', async ()=>{
+  const button = document.getElementById('register-otp-submit');
+  const token = otpDigits.map(input=>input.value).join('');
+
+  if(!pendingRegistration){
+    setAuthMessage('register-error', 'register-status', 'Hãy gửi yêu cầu đăng ký trước.', true);
+    return;
+  }
+
+  if(!/^\d{8}$/.test(token)){
+    setAuthMessage('register-error', 'register-status', 'Mã xác thực phải gồm đúng 8 chữ số.', true);
+    return;
+  }
+
+  button.disabled = true;
+  button.textContent = 'Đang xác thực...';
+
+  try{
+    const { data, error } = await window.supabaseClient.auth.verifyOtp({
+      email: pendingRegistration.email,
+      token,
+      type: 'signup'
+    });
+
+    if(error) throw error;
+    if(!data.user) throw new Error('Không tìm thấy tài khoản vừa đăng ký.');
+
+    await getOrCreateProfile(data.user);
+    await window.supabaseClient.auth.signOut();
+
+    const registeredEmail = pendingRegistration.email;
+    pendingRegistration = null;
+    document.getElementById('register-otp-section').classList.add('hidden');
+    clearOtpDigits();
+    showAuthPanel('login');
+    document.getElementById('login-email').value = registeredEmail;
+    document.getElementById('login-password').value = '';
+    setAuthMessage(
+      'login-error',
+      'login-status',
+      'Đăng ký và xác thực email thành công. Hãy nhập mật khẩu để đăng nhập.',
+      false
+    );
+  }catch(error){
+    console.error('Lỗi xác thực đăng ký:', error);
+    setAuthMessage(
+      'register-error',
+      'register-status',
+      'Không thể xác thực: ' + (error.message || 'Lỗi không xác định'),
+      true
+    );
+  }finally{
+    button.disabled = false;
+    button.textContent = 'Xác thực và hoàn tất đăng ký';
   }
 });
 
@@ -921,24 +1165,25 @@ document.getElementById('logout-btn').addEventListener('click', async ()=>{
 
     currentUser = null;
     selectedRole = null;
-    pendingLogin = null;
+    pendingRegistration = null;
 
     document.querySelectorAll('.role-card').forEach(card=>{
       card.classList.remove('selected');
     });
 
-    document.getElementById('login-name').value = '';
     document.getElementById('login-email').value = '';
-    document.getElementById('login-otp').value = '';
-
-    document.getElementById('otp-section')
-      .classList.add('hidden');
+    document.getElementById('login-password').value = '';
+    document.getElementById('register-otp-section').classList.add('hidden');
+    clearOtpDigits();
 
     document.getElementById('login-error').style.display = 'none';
     document.getElementById('login-status').style.display = 'none';
+    document.getElementById('register-error').style.display = 'none';
+    document.getElementById('register-status').style.display = 'none';
 
     document.getElementById('app').classList.add('hidden');
     document.getElementById('login-screen').classList.remove('hidden');
+    showAuthPanel('login');
   }catch(error){
     console.error('Lỗi đăng xuất:', error);
 
@@ -979,9 +1224,9 @@ function enterApp(){
   document.querySelector('.tab-btn[data-tab="'+firstVisible+'"]').classList.add('active');
   document.getElementById('tab-'+firstVisible).classList.add('active');
 
-  // Pre-fill + lock org name on booking form for farmer/export
+  // Chỉ doanh nghiệp xuất khẩu được tạo nhu cầu vận chuyển
   const orgField = document.getElementById('f-org');
-  if(currentUser.role==='farmer' || currentUser.role==='export'){
+  if(currentUser.role==='export'){
     orgField.value = currentUser.name;
     orgField.disabled = true;
   } else {
@@ -994,7 +1239,7 @@ function enterApp(){
 const bookingListCard =
   document.getElementById('booking-table-body').closest('.card');
 
-if (currentUser.role === 'carrier') {
+if (currentUser.role === 'carrier' || currentUser.role === 'driver') {
   bookingFormCard.classList.add('hidden');
   bookingListCard.style.gridColumn = '1 / -1';
 } else {
@@ -2034,6 +2279,10 @@ function renderShipments(){
   } else if(isCarrier){
     noteEl.classList.remove('hidden');
     noteEl.textContent = 'Vai trò đơn vị vận tải có quyền cập nhật trạng thái vận chuyển cho tất cả đơn hàng.';
+  } else if(currentUser.role === 'driver'){
+    list = [];
+    noteEl.classList.remove('hidden');
+    noteEl.textContent = 'Chưa có chuyến vận chuyển nào được phân công cho tài khoản tài xế này.';
   } else {
     noteEl.classList.add('hidden');
   }
@@ -2255,34 +2504,7 @@ async function restoreLoginSession() {
 
     if (sessionError) throw sessionError;
     if (!session?.user) return;
-
-    const { data: profile, error: profileError } =
-      await window.supabaseClient
-        .from('profiles')
-        .select('full_name, role, account_status')
-        .eq('id', session.user.id)
-        .maybeSingle();
-
-    if (profileError) throw profileError;
-
-    if (!profile || profile.account_status === 'blocked') {
-      await window.supabaseClient.auth.signOut();
-      return;
-    }
-
-    const interfaceRole = UI_ROLE_BY_DB[profile.role];
-
-    if (!interfaceRole) {
-      await window.supabaseClient.auth.signOut();
-      return;
-    }
-
-    currentUser = {
-      role: interfaceRole,
-      name: profile.full_name
-    };
-
-    enterApp();
+    await enterWithAuthenticatedUser(session.user);
   } catch (error) {
     console.error('Lỗi khôi phục phiên đăng nhập:', error);
   }
