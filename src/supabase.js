@@ -13,4 +13,7 @@ export const supabase = createClient(
   supabasePublishableKey
 )
 
+// Cho đoạn JavaScript trong index.html sử dụng Supabase
+window.supabaseClient = supabase
+
 console.log('Supabase client đã được khởi tạo')
