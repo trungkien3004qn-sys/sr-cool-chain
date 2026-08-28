@@ -996,6 +996,7 @@ function enterApp(){
   try{ renderPricing(); }catch(err){ console.error('renderPricing lỗi:', err); }
   try{ renderCarriersTab(); }catch(err){ console.error('renderCarriersTab lỗi:', err); }
   try{ renderRatings(); }catch(err){ console.error('renderRatings lỗi:', err); }
+  loadBookingsFromSupabase();
 }
 
 document.querySelectorAll('.tab-btn').forEach(btn=>{
@@ -1011,13 +1012,7 @@ document.querySelectorAll('.tab-btn').forEach(btn=>{
 /* ================= SHARED STATE ================= */
 const TONS_PER_CONTAINER = 9;
 
-let bookings = [
-  {org:"HTX Nông sản Krông Pắc", contact:"Nguyễn Văn Hòa", phone:"0905 112 233", region:"Krông Pắc", volume:140, month:8, date:"2026-08-11", containerType:"40", route:"Đắk Lắk – Cảng Cát Lái"},
-  {org:"Cty XNK Tây Nguyên Xanh", contact:"Trần Thị Mai", phone:"0913 445 667", region:"Cư M'gar", volume:210, month:9, date:"2026-09-10", containerType:"40", route:"Đắk Lắk – Cảng Cái Mép"},
-  {org:"HTX Sầu riêng Ea Kar", contact:"Lê Văn Sơn", phone:"0987 224 668", region:"Ea Kar", volume:95, month:8, date:"2026-08-03", containerType:"20", route:"Đắk Lắk – Cảng Cát Lái"},
-  {org:"Cty Xuất khẩu Đại Việt", contact:"Phạm Thị Ngọc", phone:"0938 556 779", region:"Krông Búk", volume:180, month:9, date:"2026-09-18", containerType:"45", route:"Đắk Lắk – Cảng Cái Mép"},
-  {org:"HTX Krông Năng Phát", contact:"Đỗ Văn Tâm", phone:"0972 331 890", region:"Krông Năng", volume:70, month:10, date:"2026-10-14", containerType:"20", route:"Đắk Lắk – Cảng Cát Lái"},
-];
+let bookings = [];
 
 /* ---------- Carrier directory (dùng để gợi ý sau khi đặt chỗ) ---------- */
 const carriers = [
@@ -1053,9 +1048,49 @@ const errorEl = document.getElementById('f-error');
 const toastEl = document.getElementById('f-toast');
 
 const PHONE_REGEX = /^(0|\+84)[0-9\s]{9,10}$/;
+async function loadBookingsFromSupabase() {
+  try {
+    const {
+      data: { user },
+      error: userError
+    } = await window.supabaseClient.auth.getUser();
 
-form.addEventListener('submit', e=>{
+    if (userError) throw userError;
+    if (!user) return;
+
+    const { data, error } = await window.supabaseClient
+      .from('bookings')
+      .select('*')
+      .eq('user_id', user.id)
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
+
+    bookings = (data || []).map(row => ({
+      id: row.id,
+      org: row.organization_name,
+      contact: row.contact_name,
+      phone: row.phone,
+      region: row.growing_region,
+      volume: Number(row.expected_volume_tons),
+      month: row.transport_month,
+      date: row.transport_date,
+      containerType: String(row.container_type),
+      route: row.route,
+      status: row.status
+    }));
+
+    renderBookingTable();
+    renderForecast();
+    renderCalendar();
+  } catch (error) {
+    console.error('Lỗi tải danh sách đăng ký:', error);
+  }
+}
+
+form.addEventListener('submit', async e => {
   e.preventDefault();
+
   const org = document.getElementById('f-org').value.trim();
   const contact = document.getElementById('f-contact').value.trim();
   const phone = document.getElementById('f-phone').value.trim();
@@ -1069,30 +1104,123 @@ form.addEventListener('submit', e=>{
   const phoneValid = PHONE_REGEX.test(phone);
   const dateInfo = dateInfoFromString(dateStr);
 
-  if(!org || !contact || !phone || !phoneValid || !region || !volume || volume<=0 || !month || !dateInfo || !containerType){
-    errorEl.style.display='block';
-    toastEl.style.display='none';
+  if (
+    !org ||
+    !contact ||
+    !phone ||
+    !phoneValid ||
+    !region ||
+    !volume ||
+    volume <= 0 ||
+    !month ||
+    !dateInfo ||
+    !containerType
+  ) {
+    errorEl.style.display = 'block';
+    toastEl.style.display = 'none';
     return;
   }
-  errorEl.style.display='none';
 
-  bookings.push({org, contact, phone, region, volume, month:parseInt(month), date:dateStr, containerType, route});
-  document.getElementById('f-contact').value='';
-  document.getElementById('f-phone').value='';
-  document.getElementById('f-region').value='';
-  document.getElementById('f-volume').value='';
-  document.getElementById('f-month').value='';
-  document.getElementById('f-date').value='';
-  document.getElementById('f-date-info').textContent='';
-  document.getElementById('f-container').value='';
+  errorEl.style.display = 'none';
 
-  toastEl.textContent = 'Đã ghi nhận đăng ký của "'+org+'" (liên hệ: '+contact+'). Container ước tính: '+Math.ceil(volume/TONS_PER_CONTAINER)+' (loại '+containerType+'ft), vận chuyển '+dateInfo.formatted+' — Tuần '+dateInfo.week+' · '+weekdayLabel(dateInfo.weekday)+'.';
-  toastEl.style.display='block';
+  const submitButton = form.querySelector('button[type="submit"]');
+  const originalButtonText = submitButton.textContent;
 
+  submitButton.disabled = true;
+  submitButton.textContent = 'Đang lưu...';
+
+  try {
+    const {
+      data: { user },
+      error: userError
+    } = await window.supabaseClient.auth.getUser();
+
+    if (userError) throw userError;
+    if (!user) throw new Error('Bạn chưa đăng nhập.');
+
+    const { error: saveError } = await window.supabaseClient
+  .from('bookings')
+  .insert({
+    user_id: user.id,
+    organization_name: org,
+    contact_name: contact,
+    phone: phone,
+    growing_region: region,
+    expected_volume_tons: volume,
+    transport_month: parseInt(month),
+    transport_date: dateStr,
+    route: route,
+    container_type: parseInt(containerType)
+  });
+
+if (saveError) throw saveError;
+
+bookings.push({
+  org: org,
+  contact: contact,
+  phone: phone,
+  region: region,
+  volume: volume,
+  month: parseInt(month),
+  date: dateStr,
+  containerType: containerType,
+  route: route,
+  status: 'pending'
+});
+
+    document.getElementById('f-contact').value = '';
+    document.getElementById('f-phone').value = '';
+    document.getElementById('f-region').value = '';
+    document.getElementById('f-volume').value = '';
+    document.getElementById('f-month').value = '';
+    document.getElementById('f-date').value = '';
+    document.getElementById('f-date-info').textContent = '';
+    document.getElementById('f-container').value = '';
+
+    toastEl.textContent =
+      'Đã lưu đăng ký thành công. Container ước tính: ' +
+      Math.ceil(volume / TONS_PER_CONTAINER) +
+      ' (loại ' +
+      containerType +
+      'ft).';
+
+    toastEl.style.display = 'block';
+
+    try {
   renderCarrierMatches(route, containerType, dateInfo.weekday);
+} catch (error) {
+  console.error('Lỗi hiển thị đơn vị vận tải:', error);
+}
+
+try {
   renderBookingTable();
+} catch (error) {
+  console.error('Lỗi hiển thị danh sách đăng ký:', error);
+}
+
+try {
   renderForecast();
+} catch (error) {
+  console.error('Lỗi cập nhật dự báo:', error);
+}
+
+try {
   renderCalendar();
+} catch (error) {
+  console.error('Lỗi cập nhật lịch:', error);
+}
+  } catch (error) {
+    console.error('Lỗi lưu đăng ký:', error);
+
+    toastEl.textContent =
+      'Không thể lưu đăng ký: ' +
+      (error.message || 'Lỗi không xác định.');
+
+    toastEl.style.display = 'block';
+  } finally {
+    submitButton.disabled = false;
+    submitButton.textContent = originalButtonText;
+  }
 });
 
 function monthLabel(m){ return 'Tháng '+m; }
