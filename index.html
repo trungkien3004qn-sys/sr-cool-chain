@@ -7,7 +7,9 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.4/chart.umd.min.js"></script>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
 <style>
   :root{
     --forest:#1F3A2E;
@@ -31,6 +33,45 @@
   h1,h2,h3{font-family:'Fraunces',serif;font-weight:600;margin:0;color:var(--forest);}
   .mono{font-family:'IBM Plex Mono',monospace;}
   .hidden{display:none !important;}
+  .route-map{height:260px;border:1px solid var(--line);border-radius:10px;overflow:hidden;margin-top:14px;background:#EEF2ED;}
+  .route-map-empty{display:flex;align-items:center;justify-content:center;height:100%;padding:16px;text-align:center;color:var(--muted);font-size:13px;}
+  .route-planner{margin:14px 0 18px;padding:14px;border:1px solid var(--line);border-radius:10px;background:#FCFAF4;}
+  .route-planner-actions{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-top:10px;}
+  .route-planner-actions .btn{margin-top:0;}
+  .route-preview-summary{font-size:13px;color:var(--forest);font-weight:600;}
+  .route-preview-details{margin-top:12px;padding-top:12px;border-top:1px dashed var(--line);}
+  .route-preview-details ol{margin:8px 0 0;padding-left:22px;color:var(--muted);font-size:12.5px;}
+  .route-preview-details li{margin:4px 0;}
+  .route-preview-map{height:230px;margin-top:12px;border:1px solid var(--line);border-radius:10px;overflow:hidden;background:#EEF2ED;}
+
+  /* ---------- Cập nhật hành trình dạng kéo ---------- */
+  .tracking-modal-overlay{position:fixed;inset:0;z-index:3000;background:rgba(20,32,26,.58);display:none;align-items:center;justify-content:center;padding:18px;}
+  .tracking-modal-overlay.open{display:flex;}
+  .tracking-modal{width:min(620px,100%);max-height:92vh;overflow-y:auto;background:var(--card);border-radius:18px;padding:24px;box-shadow:0 24px 70px rgba(0,0,0,.28);}
+  .tracking-modal-head{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;}
+  .tracking-modal-head h3{font-size:22px;}
+  .tracking-modal-close{width:36px;height:36px;border:0;border-radius:50%;background:#F0EDE3;color:var(--charcoal);font-size:22px;line-height:1;cursor:pointer;}
+  .tracking-route-name{margin:5px 0 0;color:var(--muted);font-size:13px;}
+  .tracking-slider-box{margin:22px 0 18px;padding:20px 16px 16px;background:#FCFAF4;border:1px solid var(--line);border-radius:14px;}
+  .tracking-stage-current{display:flex;justify-content:space-between;gap:12px;align-items:center;margin-bottom:16px;}
+  .tracking-stage-current strong{color:var(--forest);}
+  .tracking-progress-badge{flex:none;background:var(--forest);color:#fff;border-radius:999px;padding:5px 11px;font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:600;}
+  .tracking-range{appearance:none;-webkit-appearance:none;width:100%;height:8px;border:0;border-radius:999px;padding:0;background:linear-gradient(to right,var(--forest) 0%,var(--forest) var(--progress,0%),var(--line) var(--progress,0%),var(--line) 100%);cursor:grab;}
+  .tracking-range:active{cursor:grabbing;}
+  .tracking-range::-webkit-slider-thumb{-webkit-appearance:none;width:26px;height:26px;border-radius:50%;background:var(--gold);border:4px solid #fff;box-shadow:0 0 0 2px var(--gold-dark);}
+  .tracking-range::-moz-range-thumb{width:18px;height:18px;border-radius:50%;background:var(--gold);border:4px solid #fff;box-shadow:0 0 0 2px var(--gold-dark);}
+  .tracking-range-marks{display:flex;justify-content:space-between;margin-top:12px;font-family:'IBM Plex Mono',monospace;font-size:10.5px;color:var(--muted);}
+  .tracking-km-summary{margin-top:12px;color:var(--muted);font-size:12.5px;text-align:center;}
+  .tracking-modal-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:18px;}
+  .tracking-modal-actions .btn{margin-top:0;}
+  .tracking-modal-error{display:none;margin-top:12px;padding:9px 12px;border-radius:8px;background:var(--rust-light);color:var(--rust);font-size:12.5px;}
+  .delivery-proof-preview{display:none;width:100%;max-height:230px;object-fit:contain;margin-top:10px;border:1px solid var(--line);border-radius:10px;background:#F3F1E8;}
+  .delivery-complete-box{margin-top:12px;padding:12px 14px;border:1px solid #CFE0CC;border-radius:10px;background:#F0F6EF;color:var(--forest);font-size:12.5px;line-height:1.6;}
+  .delivery-complete-box strong{color:var(--forest);}
+  .delivery-proof-btn{border:0;background:transparent;color:var(--frost-dark);font-weight:600;cursor:pointer;padding:0;text-decoration:underline;}
+  .btn-delivery{background:var(--gold-dark);}
+  .btn-delivery:hover{background:#8F6721;}
+  @media (max-width:560px){.tracking-modal{padding:20px 16px;border-radius:14px}.tracking-modal-actions{flex-direction:column-reverse}.tracking-modal-actions .btn{justify-content:center;width:100%;}}
 
   /* ---------- Login screen ---------- */
   #login-screen{
@@ -555,11 +596,23 @@
             </div>
           </div>
 
-          <label for="f-route">Tuyến vận chuyển</label>
-          <select id="f-route">
-            <option>Đắk Lắk – Cảng Cát Lái</option>
-            <option>Đắk Lắk – Cảng Cái Mép</option>
-          </select>
+          <label for="f-destination">Điểm đến / tọa độ / link Google Maps</label>
+          <input id="f-destination" type="text" list="destination-suggestions" placeholder="VD: 1295B Nguyễn Thị Định... hoặc dán link Google Maps">
+          <datalist id="destination-suggestions">
+            <option value="Cảng Cát Lái, Thành phố Hồ Chí Minh"></option>
+            <option value="Cảng Cái Mép, Bà Rịa - Vũng Tàu"></option>
+            <option value="Cảng Quy Nhơn, Bình Định"></option>
+          </datalist>
+
+          <div class="route-planner">
+            <div style="font-size:12.5px;color:var(--muted);">Có thể nhập địa chỉ, tọa độ dạng <span class="mono">10.7569, 106.7944</span> hoặc link Google Maps đầy đủ. Hệ thống sẽ tính tuyến đường bộ và tạo các mốc theo hành trình.</div>
+            <div class="route-planner-actions">
+              <button type="button" class="btn btn-frost btn-sm" id="calculate-route-btn">Tính tuyến đường</button>
+              <span id="route-preview-summary" class="route-preview-summary">Chưa tính tuyến.</span>
+            </div>
+            <div id="route-preview-details" class="route-preview-details hidden"></div>
+            <div id="route-preview-map" class="route-preview-map hidden"></div>
+          </div>
 
           <label for="f-container">Loại container</label>
           <select id="f-container">
@@ -569,7 +622,7 @@
             <option value="45">Container 45ft lạnh</option>
           </select>
 
-          <div class="error-text" id="f-error">Vui lòng điền đầy đủ tên đơn vị, họ tên, số điện thoại hợp lệ, vùng trồng, sản lượng, tháng vận chuyển, ngày vận chuyển cụ thể và loại container.</div>
+          <div class="error-text" id="f-error">Vui lòng điền đầy đủ tên đơn vị, họ tên, số điện thoại hợp lệ, vùng trồng, điểm đến, sản lượng, tháng vận chuyển, ngày vận chuyển cụ thể và loại container.</div>
           <button type="submit" class="btn">Đăng ký đặt chỗ</button>
           <div class="toast" id="f-toast"></div>
           <div id="carrier-match" class="hidden" style="margin-top:20px;">
@@ -585,7 +638,7 @@
         <div style="overflow-x:auto;">
           <table>
             <thead>
-              <tr><th>Đơn vị</th><th>Người liên hệ</th><th>Vùng trồng</th><th>Sản lượng</th><th>Vận chuyển</th><th>Loại cont</th><th>Container ước tính</th><th>Tài xế</th><th>Trạng thái</th></tr>
+              <tr><th>Đơn vị</th><th>Người liên hệ</th><th>Vùng trồng</th><th>Sản lượng</th><th>Vận chuyển</th><th>Quãng đường</th><th>Loại cont</th><th>Container ước tính</th><th>Tài xế</th><th>Trạng thái</th></tr>
             </thead>
             <tbody id="booking-table-body"></tbody>
           </table>
@@ -763,6 +816,105 @@
 <footer>
   SR Cool Chain — bản demo minh họa cho đề tài nâng cao năng lực vận chuyển sầu riêng xuất khẩu tại Đắk Lắk. Dữ liệu trong bản demo là dữ liệu mô phỏng.
 </footer>
+</div>
+
+<div class="tracking-modal-overlay" id="tracking-update-modal" aria-hidden="true">
+  <div class="tracking-modal" role="dialog" aria-modal="true" aria-labelledby="tracking-modal-title">
+    <div class="tracking-modal-head">
+      <div>
+        <h3 id="tracking-modal-title">Cập nhật hành trình</h3>
+        <p class="tracking-route-name" id="tracking-modal-route"></p>
+      </div>
+      <button type="button" class="tracking-modal-close" id="tracking-modal-close" aria-label="Đóng">×</button>
+    </div>
+
+    <div class="tracking-slider-box">
+      <div class="tracking-stage-current">
+        <strong id="tracking-selected-stage">Xuất phát</strong>
+        <span class="tracking-progress-badge" id="tracking-selected-percent">0%</span>
+      </div>
+      <input class="tracking-range" id="tracking-progress-range" type="range" min="0" max="100" step="25" value="0" aria-label="Tiến độ hành trình">
+      <div class="tracking-range-marks"><span>0%</span><span>25%</span><span>50%</span><span>75%</span><span>100%</span></div>
+      <div class="tracking-km-summary" id="tracking-km-summary"></div>
+    </div>
+
+    <label for="tracking-location-input">Vị trí thực tế hiện tại</label>
+    <input id="tracking-location-input" type="text" placeholder="VD: Km 120, Quốc lộ 26">
+
+    <div class="row2">
+      <div>
+        <label for="tracking-travelled-input">Quãng đường đã đi (km)</label>
+        <input id="tracking-travelled-input" type="number" min="0" step="0.1">
+      </div>
+      <div>
+        <label for="tracking-remaining-input">Quãng đường còn lại (km)</label>
+        <input id="tracking-remaining-input" type="number" readonly>
+      </div>
+    </div>
+
+    <label for="tracking-note-input">Ghi chú</label>
+    <textarea id="tracking-note-input" rows="3" placeholder="Có thể bỏ trống"></textarea>
+    <div class="tracking-modal-error" id="tracking-modal-error"></div>
+
+    <div class="tracking-modal-actions">
+      <button type="button" class="btn btn-frost" id="tracking-modal-cancel">Hủy</button>
+      <button type="button" class="btn" id="tracking-modal-save">Lưu cập nhật</button>
+    </div>
+  </div>
+</div>
+
+<div class="tracking-modal-overlay" id="delivery-confirm-modal" aria-hidden="true">
+  <div class="tracking-modal" role="dialog" aria-modal="true" aria-labelledby="delivery-modal-title">
+    <div class="tracking-modal-head">
+      <div>
+        <h3 id="delivery-modal-title">Xác nhận giao hàng</h3>
+        <p class="tracking-route-name" id="delivery-modal-route"></p>
+      </div>
+      <button type="button" class="tracking-modal-close" id="delivery-modal-close" aria-label="Đóng">×</button>
+    </div>
+
+    <div class="delivery-complete-box">Hành trình đã đạt 100%. Hãy ghi nhận người nhận và ảnh bằng chứng để hoàn thành chuyến.</div>
+
+    <div class="row2">
+      <div>
+        <label for="delivery-recipient-name">Tên người nhận</label>
+        <input id="delivery-recipient-name" type="text" placeholder="VD: Nguyễn Văn An">
+      </div>
+      <div>
+        <label for="delivery-recipient-phone">Số điện thoại người nhận</label>
+        <input id="delivery-recipient-phone" type="tel" placeholder="Có thể bỏ trống">
+      </div>
+    </div>
+
+    <div class="row2">
+      <div>
+        <label for="delivery-time">Thời gian bàn giao</label>
+        <input id="delivery-time" type="datetime-local">
+      </div>
+      <div>
+        <label for="delivery-condition">Tình trạng hàng</label>
+        <select id="delivery-condition">
+          <option value="good">Nguyên vẹn, đủ số lượng</option>
+          <option value="needs_review">Cần kiểm tra thêm</option>
+          <option value="damaged">Có hư hỏng/thiếu hụt</option>
+        </select>
+      </div>
+    </div>
+
+    <label for="delivery-note">Ghi chú bàn giao</label>
+    <textarea id="delivery-note" rows="3" placeholder="Tình trạng niêm phong, số lượng thực nhận..."></textarea>
+
+    <label for="delivery-proof-file">Ảnh bằng chứng giao hàng</label>
+    <input id="delivery-proof-file" type="file" accept="image/jpeg,image/png,image/webp">
+    <div style="font-size:11.5px;color:var(--muted);margin-top:5px;">Chấp nhận JPG, PNG hoặc WebP; tối đa 5 MB.</div>
+    <img class="delivery-proof-preview" id="delivery-proof-preview" alt="Xem trước ảnh bằng chứng giao hàng">
+
+    <div class="tracking-modal-error" id="delivery-modal-error"></div>
+    <div class="tracking-modal-actions">
+      <button type="button" class="btn btn-frost" id="delivery-modal-cancel">Hủy</button>
+      <button type="button" class="btn btn-delivery" id="delivery-modal-save">Xác nhận đã giao hàng</button>
+    </div>
+  </div>
 </div>
 
 <script>
@@ -1308,6 +1460,549 @@ const errorEl = document.getElementById('f-error');
 const toastEl = document.getElementById('f-toast');
 
 const PHONE_REGEX = /^(0|\+84)[0-9\s]{9,10}$/;
+
+// Tọa độ gần đúng của từng vùng trồng, dùng làm điểm xuất phát.
+// OSRM nhận thứ tự kinh độ, vĩ độ (longitude, latitude).
+const REGION_COORDINATES = {
+  'Krông Pắc': [108.3050, 12.6860],
+  'Ea Kar': [108.6230, 12.7370],
+  "Cư M'gar": [108.1180, 12.9130],
+  'Krông Búk': [108.2900, 13.0000],
+  'Krông Năng': [108.2700, 13.0500]
+};
+
+let pendingRoutePlan = null;
+let routePreviewMap = null;
+const destinationGeocodeCache = new Map();
+
+const KNOWN_DESTINATIONS = [
+  {
+    aliases: ['cang cat lai', 'tan cang cat lai'],
+    coordinates: [106.7944, 10.7569],
+    displayName: 'Cảng Cát Lái, Thành phố Hồ Chí Minh'
+  },
+  {
+    aliases: ['cang cai mep', 'cang quoc te cai mep', 'cmit'],
+    coordinates: [107.0181, 10.5296],
+    displayName: 'Cảng Cái Mép, Phú Mỹ, Bà Rịa - Vũng Tàu'
+  },
+  {
+    aliases: ['cang quy nhon'],
+    coordinates: [109.2333, 13.7425],
+    displayName: 'Cảng Quy Nhơn, Bình Định'
+  }
+];
+
+function normalizeSearchText(value) {
+  return String(value || '').trim().replace(/\s+/g, ' ');
+}
+
+function normalizeDestinationAlias(value) {
+  return normalizeSearchText(value)
+    .toLocaleLowerCase('vi-VN')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/đ/g, 'd')
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim();
+}
+
+function createCoordinateResult(lat, lng, label) {
+  const latitude = Number(lat);
+  const longitude = Number(lng);
+  if (
+    !Number.isFinite(latitude) ||
+    !Number.isFinite(longitude) ||
+    latitude < -90 || latitude > 90 ||
+    longitude < -180 || longitude > 180
+  ) return null;
+
+  return {
+    coordinates: [longitude, latitude],
+    displayName: label || `Tọa độ ${latitude.toFixed(6)}, ${longitude.toFixed(6)}`
+  };
+}
+
+function parseDirectCoordinates(value) {
+  const match = String(value || '').match(
+    /^\s*\(?\s*(-?\d{1,2}(?:\.\d+)?)\s*[,;]\s*(-?\d{1,3}(?:\.\d+)?)\s*\)?\s*$/
+  );
+  return match ? createCoordinateResult(match[1], match[2]) : null;
+}
+
+function decodeUrlPart(value) {
+  try {
+    return decodeURIComponent(String(value || '')).replace(/\+/g, ' ').trim();
+  } catch (error) {
+    return String(value || '').replace(/\+/g, ' ').trim();
+  }
+}
+
+function parseGoogleMapsInput(value) {
+  const rawValue = normalizeSearchText(value);
+  if (!/^https?:\/\//i.test(rawValue)) return null;
+
+  let url;
+  try {
+    url = new URL(rawValue);
+  } catch (error) {
+    return null;
+  }
+
+  const host = url.hostname.toLocaleLowerCase('vi-VN');
+  const isGoogleMapsLink =
+    host.includes('google.') ||
+    host === 'maps.app.goo.gl' ||
+    host === 'goo.gl';
+  if (!isGoogleMapsLink) return null;
+
+  const decodedUrl = decodeUrlPart(rawValue);
+  const pathParts = url.pathname.split('/').filter(Boolean).map(decodeUrlPart);
+  const placeIndex = pathParts.findIndex(part => part === 'place');
+  const pathLabel = placeIndex >= 0 && pathParts[placeIndex + 1]
+    ? pathParts[placeIndex + 1]
+    : '';
+
+  const coordinatePatterns = [
+    { regex: /@(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?)/, latIndex: 1, lngIndex: 2 },
+    { regex: /!3d(-?\d+(?:\.\d+)?).*?!4d(-?\d+(?:\.\d+)?)/, latIndex: 1, lngIndex: 2 },
+    { regex: /!2d(-?\d+(?:\.\d+)?).*?!3d(-?\d+(?:\.\d+)?)/, latIndex: 2, lngIndex: 1 }
+  ];
+
+  for (const pattern of coordinatePatterns) {
+    const match = decodedUrl.match(pattern.regex);
+    if (!match) continue;
+    const coordinateResult = createCoordinateResult(
+      match[pattern.latIndex],
+      match[pattern.lngIndex],
+      pathLabel || undefined
+    );
+    if (coordinateResult) return { ...coordinateResult, isGoogleMapsLink: true };
+  }
+
+  const addressParameters = ['q', 'query', 'destination', 'daddr'];
+  for (const parameterName of addressParameters) {
+    const parameterValue = decodeUrlPart(url.searchParams.get(parameterName));
+    if (!parameterValue) continue;
+    const coordinateResult = parseDirectCoordinates(parameterValue);
+    if (coordinateResult) {
+      return { ...coordinateResult, isGoogleMapsLink: true };
+    }
+    return {
+      isGoogleMapsLink: true,
+      addressText: parameterValue,
+      displayName: pathLabel || parameterValue
+    };
+  }
+
+  if (pathLabel) {
+    return {
+      isGoogleMapsLink: true,
+      addressText: pathLabel,
+      displayName: pathLabel
+    };
+  }
+
+  return {
+    isGoogleMapsLink: true,
+    isShortLink: host === 'maps.app.goo.gl' || host === 'goo.gl'
+  };
+}
+
+function shortPlaceName(displayName, fallback) {
+  const parts = String(displayName || fallback || '').split(',').map(part => part.trim()).filter(Boolean);
+  return parts.slice(0, 3).join(', ');
+}
+
+async function geocodeDestination(destinationText) {
+  const originalQuery = normalizeSearchText(destinationText);
+  if (!originalQuery) throw new Error('Bạn chưa nhập điểm đến.');
+
+  const cacheKey = originalQuery.toLocaleLowerCase('vi-VN');
+  if (destinationGeocodeCache.has(cacheKey)) {
+    return destinationGeocodeCache.get(cacheKey);
+  }
+
+  const directCoordinateResult = parseDirectCoordinates(originalQuery);
+  if (directCoordinateResult) {
+    destinationGeocodeCache.set(cacheKey, directCoordinateResult);
+    return directCoordinateResult;
+  }
+
+  const googleMapsResult = parseGoogleMapsInput(originalQuery);
+  if (googleMapsResult?.coordinates) {
+    const result = {
+      coordinates: googleMapsResult.coordinates,
+      displayName: googleMapsResult.displayName
+    };
+    destinationGeocodeCache.set(cacheKey, result);
+    return result;
+  }
+  if (googleMapsResult?.isShortLink) {
+    throw new Error('Link Google Maps rút gọn không chứa tọa độ. Hãy mở link đó rồi sao chép link đầy đủ trên thanh địa chỉ, hoặc nhập tọa độ.');
+  }
+  if (googleMapsResult?.isGoogleMapsLink && !googleMapsResult.addressText) {
+    throw new Error('Không đọc được vị trí trong link Google Maps này. Hãy dùng link đầy đủ có dạng @vĩ_độ,kinh_độ hoặc nhập tọa độ.');
+  }
+
+  const query = googleMapsResult?.addressText || originalQuery;
+
+  const aliasKey = normalizeDestinationAlias(query);
+  const knownDestination = KNOWN_DESTINATIONS.find(destination =>
+    destination.aliases.some(alias => aliasKey.includes(alias))
+  );
+  if (knownDestination) {
+    const result = {
+      coordinates: [...knownDestination.coordinates],
+      displayName: knownDestination.displayName
+    };
+    destinationGeocodeCache.set(cacheKey, result);
+    return result;
+  }
+
+  const searchQuery = /việt nam|vietnam/i.test(query) ? query : query + ', Việt Nam';
+  const url = 'https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&countrycodes=vn&q=' +
+    encodeURIComponent(searchQuery);
+  const response = await fetch(url, {
+    headers: { 'Accept-Language': 'vi' }
+  });
+  if (!response.ok) throw new Error('Dịch vụ tìm địa điểm không phản hồi.');
+
+  const results = await response.json();
+  if (!Array.isArray(results) || !results[0]) {
+    throw new Error('Không tìm thấy điểm đến. Hãy nhập rõ hơn, ví dụ kèm tỉnh hoặc thành phố.');
+  }
+
+  const result = {
+    coordinates: [Number(results[0].lon), Number(results[0].lat)],
+    displayName: results[0].display_name
+  };
+  destinationGeocodeCache.set(cacheKey, result);
+  return result;
+}
+
+function haversineKm(pointA, pointB) {
+  const toRadians = degrees => degrees * Math.PI / 180;
+  const [lng1, lat1] = pointA;
+  const [lng2, lat2] = pointB;
+  const dLat = toRadians(lat2 - lat1);
+  const dLng = toRadians(lng2 - lng1);
+  const a = Math.sin(dLat / 2) ** 2 +
+    Math.cos(toRadians(lat1)) * Math.cos(toRadians(lat2)) * Math.sin(dLng / 2) ** 2;
+  return 6371 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+function coordinateAtRouteFraction(coordinates, fraction) {
+  if (!Array.isArray(coordinates) || !coordinates.length) return null;
+  if (fraction <= 0) return coordinates[0];
+  if (fraction >= 1) return coordinates[coordinates.length - 1];
+
+  const segmentLengths = [];
+  let totalLength = 0;
+  for (let index = 1; index < coordinates.length; index += 1) {
+    const length = haversineKm(coordinates[index - 1], coordinates[index]);
+    segmentLengths.push(length);
+    totalLength += length;
+  }
+
+  const targetLength = totalLength * fraction;
+  let travelled = 0;
+  for (let index = 0; index < segmentLengths.length; index += 1) {
+    const nextTravelled = travelled + segmentLengths[index];
+    if (nextTravelled >= targetLength) {
+      const ratio = segmentLengths[index]
+        ? (targetLength - travelled) / segmentLengths[index]
+        : 0;
+      const start = coordinates[index];
+      const end = coordinates[index + 1];
+      return [
+        start[0] + (end[0] - start[0]) * ratio,
+        start[1] + (end[1] - start[1]) * ratio
+      ];
+    }
+    travelled = nextTravelled;
+  }
+  return coordinates[coordinates.length - 1];
+}
+
+function buildRouteMilestones(geometry, distanceKm, originLabel, destinationLabel) {
+  const definitions = [
+    { percent: 0, label: 'Xuất phát: ' + originLabel },
+    { percent: 25, label: 'Mốc 25% hành trình' },
+    { percent: 50, label: 'Mốc giữa hành trình' },
+    { percent: 75, label: 'Mốc 75% hành trình' },
+    { percent: 100, label: 'Đến nơi: ' + destinationLabel }
+  ];
+  const coordinates = geometry?.coordinates || [];
+
+  return definitions.map((definition, index) => {
+    const coordinate = coordinateAtRouteFraction(coordinates, definition.percent / 100) || [null, null];
+    return {
+      sequence: index + 1,
+      percent: definition.percent,
+      label: definition.label,
+      distanceKm: Number((distanceKm * definition.percent / 100).toFixed(1)),
+      lng: coordinate[0],
+      lat: coordinate[1]
+    };
+  });
+}
+
+async function fetchRoutePlan(growingRegion, destinationText) {
+  const origin = REGION_COORDINATES[growingRegion];
+  if (!origin) throw new Error('Chưa có tọa độ cho vùng xuất phát này.');
+
+  const destination = await geocodeDestination(destinationText);
+  const originLabel = growingRegion + ', Đắk Lắk';
+  const destinationLabel = shortPlaceName(destination.displayName, destinationText);
+  const coordinates = origin.join(',') + ';' + destination.coordinates.join(',');
+  const url = 'https://router.project-osrm.org/route/v1/driving/' +
+    coordinates + '?overview=full&geometries=geojson&steps=false';
+  const response = await fetch(url);
+  if (!response.ok) throw new Error('Dịch vụ định tuyến không phản hồi.');
+
+  const payload = await response.json();
+  if (payload.code !== 'Ok' || !payload.routes?.[0]) {
+    throw new Error('Không tìm thấy tuyến đường phù hợp.');
+  }
+
+  const routeResult = payload.routes[0];
+  const distanceKm = Number((routeResult.distance / 1000).toFixed(1));
+  const geometry = routeResult.geometry;
+  return {
+    distanceKm,
+    durationMin: Math.round(routeResult.duration / 60),
+    geometry,
+    originLabel,
+    destinationLabel,
+    originCoordinates: origin,
+    destinationCoordinates: destination.coordinates,
+    milestones: buildRouteMilestones(geometry, distanceKm, originLabel, destinationLabel),
+    routeText: originLabel + ' → ' + destinationLabel,
+    requestKey: growingRegion + '|' + normalizeSearchText(destinationText).toLocaleLowerCase('vi-VN')
+  };
+}
+
+function routeRequestKey(growingRegion, destinationText) {
+  return growingRegion + '|' + normalizeSearchText(destinationText).toLocaleLowerCase('vi-VN');
+}
+
+function carrierRouteKeyFromDestination(destinationText) {
+  const normalized = normalizeSearchText(destinationText).toLocaleLowerCase('vi-VN');
+  if (normalized.includes('cát lái') || normalized.includes('cat lai')) {
+    return 'Đắk Lắk – Cảng Cát Lái';
+  }
+  if (normalized.includes('cái mép') || normalized.includes('cai mep')) {
+    return 'Đắk Lắk – Cảng Cái Mép';
+  }
+  return null;
+}
+
+function formatDistance(km) {
+  return km === null || km === undefined || km === ''
+    ? 'Chưa tính'
+    : Number(km).toLocaleString('vi-VN', { maximumFractionDigits: 1 }) + ' km';
+}
+
+function formatDuration(minutes) {
+  if (minutes === null || minutes === undefined || minutes === '') return 'Chưa tính';
+  const hours = Math.floor(Number(minutes) / 60);
+  const mins = Number(minutes) % 60;
+  return (hours ? hours + ' giờ ' : '') + (mins ? mins + ' phút' : '');
+}
+
+function mapElementId(bookingId) {
+  return 'route-map-' + String(bookingId).replace(/[^a-zA-Z0-9_-]/g, '');
+}
+
+const activeRouteMaps = new Map();
+
+function removeLeafletMap(mapInstance) {
+  if (!mapInstance) return;
+  try {
+    mapInstance.off();
+    mapInstance.remove();
+  } catch (error) {
+    console.warn('Không thể dọn bản đồ cũ hoàn toàn:', error);
+  }
+}
+
+function resetLeafletContainer(element) {
+  if (!element) return;
+  element.replaceChildren();
+  if (element._leaflet_id) delete element._leaflet_id;
+}
+
+function fitRouteMapSafely(map, routeLayer, geometry) {
+  try {
+    const bounds = routeLayer.getBounds();
+    if (bounds?.isValid?.()) {
+      map.fitBounds(bounds, { padding: [20, 20] });
+      return;
+    }
+  } catch (error) {
+    console.warn('Không thể tự căn toàn bộ tuyến, dùng điểm đầu thay thế:', error);
+  }
+
+  const firstCoordinate = geometry?.coordinates?.find(coordinate =>
+    Array.isArray(coordinate) &&
+    Number.isFinite(Number(coordinate[0])) &&
+    Number.isFinite(Number(coordinate[1]))
+  );
+  if (firstCoordinate) {
+    map.setView([Number(firstCoordinate[1]), Number(firstCoordinate[0])], 9);
+  }
+}
+
+function renderRouteMap(booking) {
+  const element = document.getElementById(mapElementId(booking.id));
+  if (!element) return;
+  const mapKey = mapElementId(booking.id);
+  removeLeafletMap(activeRouteMaps.get(mapKey));
+  activeRouteMaps.delete(mapKey);
+  resetLeafletContainer(element);
+  if (!booking.routeGeometry || typeof L === 'undefined') {
+    element.innerHTML = '<div class="route-map-empty">Chưa có dữ liệu hình học tuyến đường hoặc thư viện bản đồ chưa tải.</div>';
+    return;
+  }
+
+  try {
+    const map = L.map(element, { scrollWheelZoom: false });
+    activeRouteMaps.set(mapKey, map);
+    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '&copy; OpenStreetMap contributors'
+    }).addTo(map);
+    const routeLayer = L.geoJSON(booking.routeGeometry, {
+      style: { color: '#2E6B82', weight: 5, opacity: 0.85 }
+    }).addTo(map);
+    (booking.routeMilestones || []).forEach(milestone => {
+      if (!Number.isFinite(Number(milestone.lat)) || !Number.isFinite(Number(milestone.lng))) return;
+      L.circleMarker([Number(milestone.lat), Number(milestone.lng)], {
+        radius: milestone.percent === 0 || milestone.percent === 100 ? 7 : 5,
+        color: '#1F3A2E',
+        fillColor: milestone.percent === 100 ? '#D9A441' : '#FFFFFF',
+        fillOpacity: 1,
+        weight: 2
+      }).addTo(map).bindPopup(
+        '<strong>' + escapeHtml(milestone.label) + '</strong><br>' +
+        formatDistance(milestone.distanceKm) + ' từ điểm xuất phát'
+      );
+    });
+    fitRouteMapSafely(map, routeLayer, booking.routeGeometry);
+  } catch (error) {
+    console.error('Lỗi hiển thị bản đồ booking:', error);
+    removeLeafletMap(activeRouteMaps.get(mapKey));
+    activeRouteMaps.delete(mapKey);
+    resetLeafletContainer(element);
+    element.innerHTML = '<div class="route-map-empty">Không thể hiển thị bản đồ, nhưng dữ liệu quãng đường vẫn được lưu.</div>';
+  }
+}
+
+function renderRoutePreview(routePlan) {
+  const summary = document.getElementById('route-preview-summary');
+  const details = document.getElementById('route-preview-details');
+  const mapElement = document.getElementById('route-preview-map');
+
+  summary.textContent = formatDistance(routePlan.distanceKm) + ' · khoảng ' +
+    formatDuration(routePlan.durationMin);
+  details.innerHTML = `
+    <div><strong>${escapeHtml(routePlan.originLabel)}</strong> → <strong>${escapeHtml(routePlan.destinationLabel)}</strong></div>
+    <ol>${routePlan.milestones.map(milestone => `
+      <li><strong>${milestone.percent}%:</strong> ${escapeHtml(milestone.label)} · ${formatDistance(milestone.distanceKm)}</li>
+    `).join('')}</ol>`;
+  details.classList.remove('hidden');
+  mapElement.classList.remove('hidden');
+
+  removeLeafletMap(routePreviewMap);
+  routePreviewMap = null;
+  resetLeafletContainer(mapElement);
+  if (typeof L === 'undefined') {
+    mapElement.innerHTML = '<div class="route-map-empty">Thư viện bản đồ chưa tải.</div>';
+    return;
+  }
+
+  try {
+    routePreviewMap = L.map(mapElement, { scrollWheelZoom: false });
+    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '&copy; OpenStreetMap contributors'
+    }).addTo(routePreviewMap);
+    const routeLayer = L.geoJSON(routePlan.geometry, {
+      style: { color: '#2E6B82', weight: 5, opacity: 0.85 }
+    }).addTo(routePreviewMap);
+    routePlan.milestones.forEach(milestone => {
+      if (!Number.isFinite(Number(milestone.lat)) || !Number.isFinite(Number(milestone.lng))) return;
+      L.circleMarker([Number(milestone.lat), Number(milestone.lng)], {
+        radius: milestone.percent === 0 || milestone.percent === 100 ? 7 : 5,
+        color: '#1F3A2E',
+        fillColor: milestone.percent === 100 ? '#D9A441' : '#FFFFFF',
+        fillOpacity: 1,
+        weight: 2
+      }).addTo(routePreviewMap).bindPopup(
+        '<strong>' + escapeHtml(milestone.label) + '</strong><br>' +
+        formatDistance(milestone.distanceKm) + ' từ điểm xuất phát'
+      );
+    });
+    fitRouteMapSafely(routePreviewMap, routeLayer, routePlan.geometry);
+  } catch (error) {
+    console.error('Lỗi hiển thị bản đồ xem trước:', error);
+    removeLeafletMap(routePreviewMap);
+    routePreviewMap = null;
+    resetLeafletContainer(mapElement);
+    mapElement.innerHTML = '<div class="route-map-empty">Đã tính được quãng đường nhưng không thể hiển thị bản đồ xem trước.</div>';
+  }
+}
+
+function clearRoutePreview() {
+  pendingRoutePlan = null;
+  document.getElementById('route-preview-summary').textContent = 'Chưa tính tuyến.';
+  document.getElementById('route-preview-details').classList.add('hidden');
+  const mapElement = document.getElementById('route-preview-map');
+  mapElement.classList.add('hidden');
+  removeLeafletMap(routePreviewMap);
+  routePreviewMap = null;
+  resetLeafletContainer(mapElement);
+}
+
+async function calculateAndPreviewRoute() {
+  const growingRegion = document.getElementById('f-region').value;
+  const destinationText = document.getElementById('f-destination').value.trim();
+  const button = document.getElementById('calculate-route-btn');
+  const summary = document.getElementById('route-preview-summary');
+
+  if (!growingRegion || !destinationText) {
+    summary.textContent = 'Hãy chọn vùng trồng và nhập điểm đến.';
+    return null;
+  }
+
+  const originalText = button.textContent;
+  button.disabled = true;
+  button.textContent = 'Đang tính...';
+  summary.textContent = 'Đang tìm điểm đến và tính tuyến đường...';
+  try {
+    const routePlan = await fetchRoutePlan(growingRegion, destinationText);
+    pendingRoutePlan = routePlan;
+    renderRoutePreview(routePlan);
+    return routePlan;
+  } catch (error) {
+    pendingRoutePlan = null;
+    summary.textContent = 'Không thể tính tuyến: ' + (error.message || 'Lỗi không xác định');
+    document.getElementById('route-preview-details').classList.add('hidden');
+    const mapElement = document.getElementById('route-preview-map');
+    mapElement.classList.add('hidden');
+    removeLeafletMap(routePreviewMap);
+    routePreviewMap = null;
+    resetLeafletContainer(mapElement);
+    return null;
+  } finally {
+    button.disabled = false;
+    button.textContent = originalText;
+  }
+}
+
+document.getElementById('calculate-route-btn').addEventListener('click', calculateAndPreviewRoute);
+document.getElementById('f-region').addEventListener('change', clearRoutePreview);
+document.getElementById('f-destination').addEventListener('input', clearRoutePreview);
+
 async function loadBookingsFromSupabase() {
   try {
     const {
@@ -1379,7 +2074,31 @@ const { data, error } = await query;
       status: row.status,
       carrierId: row.carrier_id,
       driverId: row.driver_id,
-      driverName: row.driver_name
+      driverName: row.driver_name,
+      routeDistanceKm: row.route_distance_km,
+      routeDurationMin: row.route_duration_min,
+      routeGeometry: row.route_geometry,
+      routeMilestones: Array.isArray(row.route_milestones) ? row.route_milestones : [],
+      originText: row.origin_text,
+      destinationText: row.destination_text,
+      originLat: row.origin_lat,
+      originLng: row.origin_lng,
+      destinationLat: row.destination_lat,
+      destinationLng: row.destination_lng,
+      currentStage: row.current_stage,
+      currentProgressPercent: row.current_progress_percent,
+      currentLocation: row.current_location,
+      distanceTraveledKm: row.distance_traveled_km,
+      distanceRemainingKm: row.distance_remaining_km,
+      trackingNote: row.tracking_note,
+      lastTrackingAt: row.last_tracking_at,
+      deliveryRecipientName: row.delivery_recipient_name,
+      deliveryRecipientPhone: row.delivery_recipient_phone,
+      deliveredAt: row.delivered_at,
+      deliveryCondition: row.delivery_condition,
+      deliveryNote: row.delivery_note,
+      deliveryProofPath: row.delivery_proof_path,
+      completedAt: row.completed_at
     })).filter(booking => {
       if (currentUser.role !== 'carrier') return true;
 
@@ -1412,7 +2131,7 @@ form.addEventListener('submit', async e => {
   const volume = parseFloat(document.getElementById('f-volume').value);
   const month = document.getElementById('f-month').value;
   const dateStr = document.getElementById('f-date').value;
-  const route = document.getElementById('f-route').value;
+  const destinationText = document.getElementById('f-destination').value.trim();
   const containerType = document.getElementById('f-container').value;
 
   const phoneValid = PHONE_REGEX.test(phone);
@@ -1424,6 +2143,7 @@ form.addEventListener('submit', async e => {
     !phone ||
     !phoneValid ||
     !region ||
+    !destinationText ||
     !volume ||
     volume <= 0 ||
     !month ||
@@ -1441,7 +2161,7 @@ form.addEventListener('submit', async e => {
   const originalButtonText = submitButton.textContent;
 
   submitButton.disabled = true;
-  submitButton.textContent = 'Đang lưu...';
+  submitButton.textContent = 'Đang tính tuyến đường...';
 
   try {
     const {
@@ -1451,6 +2171,14 @@ form.addEventListener('submit', async e => {
 
     if (userError) throw userError;
     if (!user) throw new Error('Bạn chưa đăng nhập.');
+
+    let routePlan = pendingRoutePlan;
+    if (!routePlan || routePlan.requestKey !== routeRequestKey(region, destinationText)) {
+      routePlan = await fetchRoutePlan(region, destinationText);
+      pendingRoutePlan = routePlan;
+      renderRoutePreview(routePlan);
+    }
+    submitButton.textContent = 'Đang lưu booking...';
 
     const { error: saveError } = await window.supabaseClient
   .from('bookings')
@@ -1463,8 +2191,23 @@ form.addEventListener('submit', async e => {
     expected_volume_tons: volume,
     transport_month: parseInt(month),
     transport_date: dateStr,
-    route: route,
-    container_type: parseInt(containerType)
+    route: routePlan.routeText,
+    container_type: parseInt(containerType),
+    route_distance_km: routePlan.distanceKm,
+    route_duration_min: routePlan.durationMin,
+    route_geometry: routePlan.geometry,
+    route_milestones: routePlan.milestones,
+    origin_text: routePlan.originLabel,
+    destination_text: routePlan.destinationLabel,
+    origin_lat: routePlan.originCoordinates[1],
+    origin_lng: routePlan.originCoordinates[0],
+    destination_lat: routePlan.destinationCoordinates[1],
+    destination_lng: routePlan.destinationCoordinates[0],
+    current_stage: 'Đã đặt chỗ',
+    current_progress_percent: 0,
+    current_location: routePlan.originLabel,
+    distance_traveled_km: 0,
+    distance_remaining_km: routePlan.distanceKm
   });
 
 if (saveError) throw saveError;
@@ -1478,8 +2221,23 @@ bookings.push({
   month: parseInt(month),
   date: dateStr,
   containerType: containerType,
-  route: route,
-  status: 'pending'
+  route: routePlan.routeText,
+  status: 'pending',
+  routeDistanceKm: routePlan.distanceKm,
+  routeDurationMin: routePlan.durationMin,
+  routeGeometry: routePlan.geometry,
+  routeMilestones: routePlan.milestones,
+  originText: routePlan.originLabel,
+  destinationText: routePlan.destinationLabel,
+  originLat: routePlan.originCoordinates[1],
+  originLng: routePlan.originCoordinates[0],
+  destinationLat: routePlan.destinationCoordinates[1],
+  destinationLng: routePlan.destinationCoordinates[0],
+  currentStage: 'Đã đặt chỗ',
+  currentProgressPercent: 0,
+  currentLocation: routePlan.originLabel,
+  distanceTraveledKm: 0,
+  distanceRemainingKm: routePlan.distanceKm
 });
 
     document.getElementById('f-contact').value = '';
@@ -1489,20 +2247,23 @@ bookings.push({
     document.getElementById('f-month').value = '';
     document.getElementById('f-date').value = '';
     document.getElementById('f-date-info').textContent = '';
+    document.getElementById('f-destination').value = '';
     document.getElementById('f-container').value = '';
+    clearRoutePreview();
 
     toastEl.textContent =
       'Đã lưu đăng ký thành công. Container ước tính: ' +
       Math.ceil(volume / TONS_PER_CONTAINER) +
       ' (loại ' +
       containerType +
-      'ft).';
+      'ft). Tuyến đường dự kiến: ' + formatDistance(routePlan.distanceKm) +
+      ', khoảng ' + formatDuration(routePlan.durationMin) + '.';
 
     toastEl.style.display = 'block';
     await loadBookingsFromSupabase();
 
     try {
-  renderCarrierMatches(route, containerType, dateInfo.weekday);
+  renderCarrierMatches(carrierRouteKeyFromDestination(destinationText), containerType, dateInfo.weekday);
 } catch (error) {
   console.error('Lỗi hiển thị đơn vị vận tải:', error);
 }
@@ -1922,7 +2683,8 @@ function bookingStatusLabel(status) {
     pending: 'Chờ tiếp nhận',
     matched: 'Đã tiếp nhận',
     confirmed: 'Đã xác nhận',
-    cancelled: 'Đã hủy'
+    cancelled: 'Đã hủy',
+    delivered: 'Đã hoàn thành'
   };
 
   return labels[status] || 'Chờ tiếp nhận';
@@ -1970,6 +2732,9 @@ const driverCell = canAssign
          </option>`).join('')}
      </select>`
   : (b.driverName || '—');
+const routeDistanceCell = b.routeDistanceKm
+  ? `<span class="mono">${formatDistance(b.routeDistanceKm)}</span><br><span style="font-size:11px;color:var(--muted);">${formatDuration(b.routeDurationMin)}</span>`
+  : '—';
 
     tr.innerHTML = `
       <td>${b.org}</td>
@@ -1984,6 +2749,7 @@ const driverCell = canAssign
       <td>${b.region}</td>
       <td class="mono">${b.volume} tấn</td>
       <td>${shipText}</td>
+      <td>${routeDistanceCell}</td>
       <td>${b.containerType ? containerLabel(b.containerType) : '—'}</td>
       <td class="mono">${Math.ceil(b.volume / TONS_PER_CONTAINER)}</td>
       <td>${driverCell}</td>
@@ -2022,7 +2788,7 @@ const driverCell = canAssign
        Từ chối
      </button>`
   : ''}
-  ${canConfirm
+        ${canConfirm
   ? `<br>
      <button
        type="button"
@@ -2032,6 +2798,9 @@ const driverCell = canAssign
        Xác nhận vận chuyển
      </button>`
   : ''}
+        ${b.status === 'delivered' && b.deliveryProofPath
+          ? `<br><button type="button" class="delivery-proof-btn" data-path="${escapeHtml(b.deliveryProofPath)}" style="margin-top:8px;">Xem ảnh bàn giao</button>`
+          : ''}
       </td>
     `;
 
@@ -2063,6 +2832,7 @@ body.querySelectorAll('.booking-confirm-btn').forEach(button => {
     await confirmBooking(button.dataset.id);
   });
 });
+  bindDeliveryActionButtons(body);
 
   document.getElementById('booking-count').textContent =
     '(' + bookings.length + ' đăng ký)';
@@ -2437,6 +3207,495 @@ let shipments = [
   {id:'SR-2584', org:'HTX Sầu riêng Ea Kar', route:'Đắk Lắk – Cát Lái', containers:5, stage:4, location:'Đã lên tàu — rời cảng Cát Lái', plate:'50H-321.09', gps:{lat:10.7745, lng:106.7896}, temp:'2.0°C', tempOk:true, updated:'1 ngày trước', tempHistory:[2.2,2.1,1.9,2.0,2.1,2.0]},
 ];
 
+let trackingModalState = null;
+
+function getBookingTrackingStages(booking) {
+  if (Array.isArray(booking.routeMilestones) && booking.routeMilestones.length) {
+    return booking.routeMilestones
+      .map(milestone => ({
+        label: milestone.label,
+        percent: Number(milestone.percent),
+        distanceKm: Number(milestone.distanceKm || 0)
+      }))
+      .filter(stage => Number.isFinite(stage.percent))
+      .sort((a, b) => a.percent - b.percent);
+  }
+
+  return stages.map((stage, index) => ({
+    label: stage,
+    percent: Math.round(index * 100 / (stages.length - 1)),
+    distanceKm: Number(booking.routeDistanceKm || 0) * index / (stages.length - 1)
+  }));
+}
+
+function closestTrackingStage(stageList, percent) {
+  return stageList.reduce((closest, stage) =>
+    Math.abs(stage.percent - percent) < Math.abs(closest.percent - percent)
+      ? stage
+      : closest
+  );
+}
+
+function updateTrackingRemainingDistance() {
+  if (!trackingModalState) return;
+  const travelled = Number(document.getElementById('tracking-travelled-input').value || 0);
+  const planned = Number(trackingModalState.booking.routeDistanceKm || 0);
+  document.getElementById('tracking-remaining-input').value = planned
+    ? Math.max(0, Number((planned - travelled).toFixed(1)))
+    : '';
+}
+
+function updateTrackingModalFromSlider(options = {}) {
+  if (!trackingModalState) return;
+  const slider = document.getElementById('tracking-progress-range');
+  const selectedStage = closestTrackingStage(
+    trackingModalState.stageList,
+    Number(slider.value)
+  );
+  const previousAutoLocation = trackingModalState.autoLocation;
+  trackingModalState.selectedStage = selectedStage;
+  trackingModalState.autoLocation = selectedStage.label;
+  slider.value = String(selectedStage.percent);
+  slider.style.setProperty('--progress', selectedStage.percent + '%');
+
+  document.getElementById('tracking-selected-stage').textContent = selectedStage.label;
+  document.getElementById('tracking-selected-percent').textContent = selectedStage.percent + '%';
+  document.getElementById('tracking-km-summary').textContent =
+    formatDistance(selectedStage.distanceKm) + ' / ' +
+    formatDistance(trackingModalState.booking.routeDistanceKm) + ' toàn tuyến';
+
+  if (!options.preserveDistance) {
+    document.getElementById('tracking-travelled-input').value = selectedStage.distanceKm;
+  }
+  const locationInput = document.getElementById('tracking-location-input');
+  if (
+    !options.preserveLocation &&
+    (!locationInput.value.trim() || locationInput.value === previousAutoLocation)
+  ) {
+    locationInput.value = selectedStage.label;
+  }
+  updateTrackingRemainingDistance();
+}
+
+function closeDriverTrackingModal() {
+  const modal = document.getElementById('tracking-update-modal');
+  modal.classList.remove('open');
+  modal.setAttribute('aria-hidden', 'true');
+  document.body.style.overflow = '';
+  trackingModalState = null;
+}
+
+function openDriverTrackingModal(bookingId) {
+  const booking = bookings.find(item => String(item.id) === String(bookingId));
+  if (!booking || currentUser?.role !== 'driver' || booking.status === 'delivered') return;
+
+  const stageList = getBookingTrackingStages(booking);
+  if (!stageList.length) return;
+  const exactStage = stageList.find(stage => stage.label === booking.currentStage);
+  const selectedStage = exactStage || closestTrackingStage(
+    stageList,
+    Number(booking.currentProgressPercent || 0)
+  );
+  trackingModalState = {
+    booking,
+    stageList,
+    selectedStage,
+    autoLocation: selectedStage.label
+  };
+
+  document.getElementById('tracking-modal-route').textContent = booking.route || 'Chuyến được phân công';
+  document.getElementById('tracking-progress-range').value = String(selectedStage.percent);
+  document.getElementById('tracking-location-input').value = booking.currentLocation || selectedStage.label;
+  document.getElementById('tracking-travelled-input').value = Number(booking.distanceTraveledKm || selectedStage.distanceKm || 0);
+  document.getElementById('tracking-note-input').value = booking.trackingNote || '';
+  const errorElement = document.getElementById('tracking-modal-error');
+  errorElement.style.display = 'none';
+  errorElement.textContent = '';
+  updateTrackingModalFromSlider({ preserveLocation: true, preserveDistance: true });
+
+  const modal = document.getElementById('tracking-update-modal');
+  modal.classList.add('open');
+  modal.setAttribute('aria-hidden', 'false');
+  document.body.style.overflow = 'hidden';
+}
+
+async function saveDriverTrackingUpdate() {
+  if (!trackingModalState || currentUser?.role !== 'driver') return;
+  const { booking, selectedStage } = trackingModalState;
+  const location = document.getElementById('tracking-location-input').value.trim();
+  const travelled = Number(document.getElementById('tracking-travelled-input').value);
+  const note = document.getElementById('tracking-note-input').value.trim();
+  const planned = Number(booking.routeDistanceKm || 0);
+  const remaining = planned ? Math.max(0, Number((planned - travelled).toFixed(1))) : null;
+  const errorElement = document.getElementById('tracking-modal-error');
+
+  if (!location) {
+    errorElement.textContent = 'Vui lòng nhập vị trí thực tế hiện tại.';
+    errorElement.style.display = 'block';
+    return;
+  }
+  if (!Number.isFinite(travelled) || travelled < 0 || (planned && travelled > planned)) {
+    errorElement.textContent = 'Quãng đường đã đi phải nằm trong phạm vi của toàn tuyến.';
+    errorElement.style.display = 'block';
+    return;
+  }
+
+  const saveButton = document.getElementById('tracking-modal-save');
+  const originalText = saveButton.textContent;
+  saveButton.disabled = true;
+  saveButton.textContent = 'Đang lưu...';
+  errorElement.style.display = 'none';
+
+  try {
+    const now = new Date().toISOString();
+    const { error: bookingError } = await window.supabaseClient
+      .from('bookings')
+      .update({
+        current_stage: selectedStage.label,
+        current_progress_percent: selectedStage.percent,
+        current_location: location,
+        distance_traveled_km: travelled,
+        distance_remaining_km: remaining,
+        tracking_note: note,
+        last_tracking_at: now,
+        updated_at: now
+      })
+      .eq('id', booking.id)
+      .eq('driver_id', currentUser.id)
+      .neq('status', 'delivered');
+    if (bookingError) throw bookingError;
+
+    const { error: eventError } = await window.supabaseClient
+      .from('tracking_events')
+      .insert({
+        booking_id: String(booking.id),
+        driver_id: currentUser.id,
+        stage: selectedStage.label,
+        milestone_percent: selectedStage.percent,
+        location_text: location,
+        distance_traveled_km: travelled,
+        distance_remaining_km: remaining,
+        note
+      });
+    if (eventError) throw eventError;
+
+    booking.currentStage = selectedStage.label;
+    booking.currentProgressPercent = selectedStage.percent;
+    booking.currentLocation = location;
+    booking.distanceTraveledKm = travelled;
+    booking.distanceRemainingKm = remaining;
+    booking.trackingNote = note;
+    booking.lastTrackingAt = now;
+    const shouldConfirmDelivery = selectedStage.percent >= 100;
+    closeDriverTrackingModal();
+    renderShipments();
+    const trackingNote = document.getElementById('tracking-note');
+    trackingNote.textContent = shouldConfirmDelivery
+      ? 'Hành trình đã đạt 100%. Hãy xác nhận người nhận và ảnh bàn giao.'
+      : 'Đã lưu cập nhật hành trình ở mốc ' + selectedStage.percent + '%.';
+    if (shouldConfirmDelivery) {
+      setTimeout(() => openDeliveryConfirmationModal(booking.id), 0);
+    }
+  } catch (error) {
+    console.error('Lỗi cập nhật tiến độ:', error);
+    errorElement.textContent = 'Không thể lưu cập nhật: ' + (error.message || 'Lỗi không xác định');
+    errorElement.style.display = 'block';
+  } finally {
+    saveButton.disabled = false;
+    saveButton.textContent = originalText;
+  }
+}
+
+document.getElementById('tracking-progress-range').addEventListener('input', () => {
+  updateTrackingModalFromSlider();
+});
+document.getElementById('tracking-travelled-input').addEventListener('input', updateTrackingRemainingDistance);
+document.getElementById('tracking-modal-save').addEventListener('click', saveDriverTrackingUpdate);
+document.getElementById('tracking-modal-close').addEventListener('click', closeDriverTrackingModal);
+document.getElementById('tracking-modal-cancel').addEventListener('click', closeDriverTrackingModal);
+document.getElementById('tracking-update-modal').addEventListener('click', event => {
+  if (event.target.id === 'tracking-update-modal') closeDriverTrackingModal();
+});
+document.addEventListener('keydown', event => {
+  if (event.key === 'Escape' && trackingModalState) closeDriverTrackingModal();
+});
+
+let deliveryModalBooking = null;
+let deliveryPreviewUrl = null;
+
+function deliveryConditionLabel(condition) {
+  const labels = {
+    good: 'Nguyên vẹn, đủ số lượng',
+    needs_review: 'Cần kiểm tra thêm',
+    damaged: 'Có hư hỏng/thiếu hụt'
+  };
+  return labels[condition] || 'Chưa ghi nhận';
+}
+
+function deliverySummaryHtml(booking) {
+  if (booking.status !== 'delivered') return '';
+  const phone = booking.deliveryRecipientPhone
+    ? ' · ' + escapeHtml(booking.deliveryRecipientPhone)
+    : '';
+  const note = booking.deliveryNote
+    ? `<div><strong>Ghi chú:</strong> ${escapeHtml(booking.deliveryNote)}</div>`
+    : '';
+  const proofButton = booking.deliveryProofPath
+    ? `<button type="button" class="delivery-proof-btn" data-path="${escapeHtml(booking.deliveryProofPath)}">Xem ảnh bàn giao</button>`
+    : '<span>Chưa có ảnh bàn giao</span>';
+
+  return `
+    <div class="delivery-complete-box">
+      <div><strong>✓ Giao hàng hoàn tất</strong></div>
+      <div><strong>Người nhận:</strong> ${escapeHtml(booking.deliveryRecipientName || '—')}${phone}</div>
+      <div><strong>Thời gian:</strong> ${escapeHtml(formatDeliveryTime(booking.deliveredAt))}</div>
+      <div><strong>Tình trạng:</strong> ${escapeHtml(deliveryConditionLabel(booking.deliveryCondition))}</div>
+      ${note}
+      <div>${proofButton}</div>
+    </div>`;
+}
+
+function formatDeliveryTime(value) {
+  if (!value) return '—';
+  const date = new Date(value);
+  return Number.isNaN(date.getTime())
+    ? '—'
+    : date.toLocaleString('vi-VN');
+}
+
+function currentDatetimeLocalValue() {
+  const now = new Date();
+  const local = new Date(now.getTime() - now.getTimezoneOffset() * 60000);
+  return local.toISOString().slice(0, 16);
+}
+
+function closeDeliveryConfirmationModal() {
+  const modal = document.getElementById('delivery-confirm-modal');
+  modal.classList.remove('open');
+  modal.setAttribute('aria-hidden', 'true');
+  document.body.style.overflow = '';
+  deliveryModalBooking = null;
+  if (deliveryPreviewUrl) {
+    URL.revokeObjectURL(deliveryPreviewUrl);
+    deliveryPreviewUrl = null;
+  }
+  const preview = document.getElementById('delivery-proof-preview');
+  preview.removeAttribute('src');
+  preview.style.display = 'none';
+}
+
+function openDeliveryConfirmationModal(bookingId) {
+  const booking = bookings.find(item => String(item.id) === String(bookingId));
+  if (!booking || currentUser?.role !== 'driver' || booking.status === 'delivered') return;
+  if (Number(booking.currentProgressPercent || 0) < 100) {
+    alert('Hãy cập nhật hành trình đến mốc 100% trước khi xác nhận giao hàng.');
+    return;
+  }
+
+  deliveryModalBooking = booking;
+  document.getElementById('delivery-modal-route').textContent = booking.route || 'Chuyến được phân công';
+  document.getElementById('delivery-recipient-name').value = '';
+  document.getElementById('delivery-recipient-phone').value = '';
+  document.getElementById('delivery-time').value = currentDatetimeLocalValue();
+  document.getElementById('delivery-condition').value = 'good';
+  document.getElementById('delivery-note').value = '';
+  document.getElementById('delivery-proof-file').value = '';
+  const errorElement = document.getElementById('delivery-modal-error');
+  errorElement.textContent = '';
+  errorElement.style.display = 'none';
+
+  const modal = document.getElementById('delivery-confirm-modal');
+  modal.classList.add('open');
+  modal.setAttribute('aria-hidden', 'false');
+  document.body.style.overflow = 'hidden';
+}
+
+async function viewDeliveryProof(filePath) {
+  if (!filePath) return;
+  const previewWindow = window.open('', '_blank');
+  try {
+    const { data, error } = await window.supabaseClient.storage
+      .from('delivery-proofs')
+      .createSignedUrl(filePath, 300);
+    if (error) throw error;
+    if (!data?.signedUrl) throw new Error('Không tạo được đường dẫn ảnh.');
+    if (previewWindow) {
+      previewWindow.location.href = data.signedUrl;
+    } else {
+      window.open(data.signedUrl, '_blank', 'noopener');
+    }
+  } catch (error) {
+    if (previewWindow) previewWindow.close();
+    alert('Không thể mở ảnh bằng chứng: ' + (error.message || 'Lỗi không xác định'));
+  }
+}
+
+function bindDeliveryActionButtons(container) {
+  if (!container) return;
+  container.querySelectorAll('.delivery-confirm-btn').forEach(button => {
+    button.addEventListener('click', () => openDeliveryConfirmationModal(button.dataset.id));
+  });
+  container.querySelectorAll('.delivery-proof-btn').forEach(button => {
+    button.addEventListener('click', () => viewDeliveryProof(button.dataset.path));
+  });
+}
+
+async function saveDeliveryConfirmation() {
+  const booking = deliveryModalBooking;
+  if (!booking || currentUser?.role !== 'driver') return;
+
+  const recipientName = document.getElementById('delivery-recipient-name').value.trim();
+  const recipientPhone = document.getElementById('delivery-recipient-phone').value.trim();
+  const deliveryTimeValue = document.getElementById('delivery-time').value;
+  const condition = document.getElementById('delivery-condition').value;
+  const note = document.getElementById('delivery-note').value.trim();
+  const proofFile = document.getElementById('delivery-proof-file').files[0];
+  const errorElement = document.getElementById('delivery-modal-error');
+
+  if (!recipientName || !deliveryTimeValue || !condition || !proofFile) {
+    errorElement.textContent = 'Vui lòng nhập người nhận, thời gian, tình trạng hàng và chọn ảnh bằng chứng.';
+    errorElement.style.display = 'block';
+    return;
+  }
+  if (recipientPhone && !PHONE_REGEX.test(recipientPhone)) {
+    errorElement.textContent = 'Số điện thoại người nhận không hợp lệ.';
+    errorElement.style.display = 'block';
+    return;
+  }
+  const allowedTypes = ['image/jpeg', 'image/png', 'image/webp'];
+  if (!allowedTypes.includes(proofFile.type) || proofFile.size > 5 * 1024 * 1024) {
+    errorElement.textContent = 'Ảnh phải là JPG, PNG hoặc WebP và không vượt quá 5 MB.';
+    errorElement.style.display = 'block';
+    return;
+  }
+
+  const deliveredAt = new Date(deliveryTimeValue);
+  if (Number.isNaN(deliveredAt.getTime())) {
+    errorElement.textContent = 'Thời gian bàn giao không hợp lệ.';
+    errorElement.style.display = 'block';
+    return;
+  }
+
+  const saveButton = document.getElementById('delivery-modal-save');
+  const originalText = saveButton.textContent;
+  saveButton.disabled = true;
+  saveButton.textContent = 'Đang tải ảnh...';
+  errorElement.style.display = 'none';
+  let uploadedPath = '';
+
+  try {
+    const extensionByType = {
+      'image/jpeg': 'jpg',
+      'image/png': 'png',
+      'image/webp': 'webp'
+    };
+    const safeBookingId = String(booking.id).replace(/[^a-zA-Z0-9_-]/g, '');
+    uploadedPath = `${currentUser.id}/${safeBookingId}/${Date.now()}.${extensionByType[proofFile.type]}`;
+    const { error: uploadError } = await window.supabaseClient.storage
+      .from('delivery-proofs')
+      .upload(uploadedPath, proofFile, { cacheControl: '3600', upsert: false });
+    if (uploadError) throw uploadError;
+
+    saveButton.textContent = 'Đang hoàn thành chuyến...';
+    const now = new Date().toISOString();
+    const deliveredAtIso = deliveredAt.toISOString();
+    const plannedDistance = Number(booking.routeDistanceKm || 0);
+    const { data: completedRow, error: bookingError } = await window.supabaseClient
+      .from('bookings')
+      .update({
+        status: 'delivered',
+        current_stage: 'Đã giao hàng',
+        current_progress_percent: 100,
+        current_location: booking.destinationText || booking.currentLocation || 'Điểm giao hàng',
+        distance_traveled_km: plannedDistance || booking.distanceTraveledKm,
+        distance_remaining_km: 0,
+        delivery_recipient_name: recipientName,
+        delivery_recipient_phone: recipientPhone || null,
+        delivered_at: deliveredAtIso,
+        delivery_condition: condition,
+        delivery_note: note || null,
+        delivery_proof_path: uploadedPath,
+        completed_at: now,
+        last_tracking_at: now,
+        updated_at: now
+      })
+      .eq('id', booking.id)
+      .eq('driver_id', currentUser.id)
+      .in('status', ['matched', 'confirmed'])
+      .select('id')
+      .maybeSingle();
+    if (bookingError) throw bookingError;
+    if (!completedRow) throw new Error('Chuyến đã hoàn thành hoặc không còn ở trạng thái có thể bàn giao.');
+
+    const { error: eventError } = await window.supabaseClient
+      .from('tracking_events')
+      .insert({
+        booking_id: String(booking.id),
+        driver_id: currentUser.id,
+        stage: 'Đã giao hàng',
+        milestone_percent: 100,
+        location_text: booking.destinationText || booking.currentLocation || 'Điểm giao hàng',
+        distance_traveled_km: plannedDistance || booking.distanceTraveledKm,
+        distance_remaining_km: 0,
+        note: note || 'Đã xác nhận bàn giao hàng.'
+      });
+    if (eventError) console.warn('Không thể thêm sự kiện bàn giao vào lịch sử:', eventError);
+
+    booking.status = 'delivered';
+    booking.currentStage = 'Đã giao hàng';
+    booking.currentProgressPercent = 100;
+    booking.currentLocation = booking.destinationText || booking.currentLocation || 'Điểm giao hàng';
+    booking.distanceTraveledKm = plannedDistance || booking.distanceTraveledKm;
+    booking.distanceRemainingKm = 0;
+    booking.deliveryRecipientName = recipientName;
+    booking.deliveryRecipientPhone = recipientPhone;
+    booking.deliveredAt = deliveredAtIso;
+    booking.deliveryCondition = condition;
+    booking.deliveryNote = note;
+    booking.deliveryProofPath = uploadedPath;
+    booking.completedAt = now;
+    closeDeliveryConfirmationModal();
+    renderBookingTable();
+    renderShipments();
+    const trackingNote = document.getElementById('tracking-note');
+    trackingNote.textContent = 'Đã xác nhận giao hàng và hoàn thành chuyến.';
+  } catch (error) {
+    console.error('Lỗi xác nhận giao hàng:', error);
+    if (uploadedPath) {
+      await window.supabaseClient.storage.from('delivery-proofs').remove([uploadedPath]);
+    }
+    errorElement.textContent = 'Không thể xác nhận giao hàng: ' + (error.message || 'Lỗi không xác định');
+    errorElement.style.display = 'block';
+  } finally {
+    saveButton.disabled = false;
+    saveButton.textContent = originalText;
+  }
+}
+
+document.getElementById('delivery-proof-file').addEventListener('change', event => {
+  if (deliveryPreviewUrl) URL.revokeObjectURL(deliveryPreviewUrl);
+  deliveryPreviewUrl = null;
+  const preview = document.getElementById('delivery-proof-preview');
+  const file = event.target.files[0];
+  if (!file) {
+    preview.removeAttribute('src');
+    preview.style.display = 'none';
+    return;
+  }
+  deliveryPreviewUrl = URL.createObjectURL(file);
+  preview.src = deliveryPreviewUrl;
+  preview.style.display = 'block';
+});
+document.getElementById('delivery-modal-save').addEventListener('click', saveDeliveryConfirmation);
+document.getElementById('delivery-modal-close').addEventListener('click', closeDeliveryConfirmationModal);
+document.getElementById('delivery-modal-cancel').addEventListener('click', closeDeliveryConfirmationModal);
+document.getElementById('delivery-confirm-modal').addEventListener('click', event => {
+  if (event.target.id === 'delivery-confirm-modal') closeDeliveryConfirmationModal();
+});
+document.addEventListener('keydown', event => {
+  if (event.key === 'Escape' && deliveryModalBooking) closeDeliveryConfirmationModal();
+});
+
 function renderShipments(){
   if(!currentUser) return;
   const noteEl = document.getElementById('tracking-note');
@@ -2485,21 +3744,58 @@ function renderShipments(){
         <h3>Chuyến được phân công (${assigned.length})</h3>
         <div style="overflow-x:auto;">
           <table>
-            <thead><tr><th>Doanh nghiệp</th><th>Tuyến</th><th>Ngày vận chuyển</th><th>Sản lượng</th><th>Trạng thái</th></tr></thead>
+            <thead><tr><th>Doanh nghiệp</th><th>Tuyến</th><th>Ngày vận chuyển</th><th>Quãng đường</th><th>Mốc hiện tại</th><th>Thao tác</th></tr></thead>
             <tbody>
               ${assigned.map(booking => `
                 <tr>
                   <td>${escapeHtml(booking.org || '—')}</td>
                   <td>${escapeHtml(booking.route || '—')}</td>
                   <td>${escapeHtml(booking.date || '—')}</td>
-                  <td>${booking.volume || 0} tấn</td>
-                  <td><span class="pill pill-registered">${bookingStatusLabel(booking.status)}</span></td>
-                </tr>`).join('')}
+                  <td><span class="mono">${formatDistance(booking.routeDistanceKm)}</span><br><span style="font-size:11px;color:var(--muted);">Còn ${formatDistance(booking.distanceRemainingKm ?? booking.routeDistanceKm)}</span></td>
+                  <td>${escapeHtml(booking.currentStage || 'Đã đặt chỗ')}<br><span style="font-size:11px;color:var(--muted);">${escapeHtml(booking.currentLocation || 'Chưa cập nhật')}</span></td>
+                  <td>
+                    ${booking.status === 'delivered'
+                      ? '<span class="pill pill-registered">Đã hoàn thành</span>'
+                      : `<button type="button" class="btn btn-frost btn-sm driver-update-btn" data-id="${booking.id}">Cập nhật</button>
+                         ${Number(booking.currentProgressPercent || 0) >= 100
+                           ? `<button type="button" class="btn btn-delivery btn-sm delivery-confirm-btn" data-id="${booking.id}" style="margin-top:8px;">Xác nhận giao hàng</button>`
+                           : ''}`}
+                  </td>
+                </tr>
+                <tr><td colspan="6">${deliverySummaryHtml(booking)}<div class="route-map" id="${mapElementId(booking.id)}"></div></td></tr>`).join('')}
             </tbody>
           </table>
         </div>
       </div>`;
+    assigned.forEach(booking => renderRouteMap(booking));
+    wrap.querySelectorAll('.driver-update-btn').forEach(button => {
+      button.addEventListener('click', () => {
+        openDriverTrackingModal(button.dataset.id);
+      });
+    });
+    bindDeliveryActionButtons(wrap);
     return;
+  }
+
+  const actualBookings = bookings.filter(booking => booking.routeGeometry);
+  if (actualBookings.length) {
+    const actualBox = document.createElement('div');
+    actualBox.className = 'card';
+    actualBox.style.marginBottom = '24px';
+    actualBox.innerHTML = `
+      <h3>Tuyến đường booking thực tế</h3>
+      <p style="color:var(--muted);font-size:13px;margin-top:-8px;">Quãng đường và thời gian được tính theo đường bộ; tiến độ do tài xế cập nhật thủ công.</p>
+      ${actualBookings.map(booking => `
+        <div style="border-top:1px solid var(--line);padding-top:16px;margin-top:16px;">
+          <strong>${escapeHtml(booking.org || 'Booking')}</strong>
+          <div style="font-size:13px;margin-top:4px;">${escapeHtml(booking.route || '—')} · <span class="mono">${formatDistance(booking.routeDistanceKm)}</span> · khoảng ${formatDuration(booking.routeDurationMin)}</div>
+          <div style="font-size:12.5px;color:var(--muted);margin-top:4px;">Mốc: ${escapeHtml(booking.currentStage || 'Đã đặt chỗ')} · Vị trí: ${escapeHtml(booking.currentLocation || 'Chưa cập nhật')}</div>
+          ${deliverySummaryHtml(booking)}
+          <div class="route-map" id="${mapElementId(booking.id)}"></div>
+        </div>`).join('')}`;
+    wrap.appendChild(actualBox);
+    actualBookings.forEach(booking => renderRouteMap(booking));
+    bindDeliveryActionButtons(actualBox);
   }
 
   list.forEach(s=>{
